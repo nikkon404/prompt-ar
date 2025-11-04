@@ -43,3 +43,13 @@ frontend_prompt_ar/android/app/profile
 frontend_prompt_ar/android/app/release
 .vscode/settings.json
 frontend_prompt_ar/.metadata
+
+# Python related
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/fake_model.glb
+backend/.env
+backend/.env.local
+frontend_prompt_ar/.env
+frontend_prompt_ar/.env.local

@@ -20,7 +20,9 @@ class StorageService:
             "model_id": model_id,
             "prompt": prompt,
             "created_at": datetime.now().isoformat(),
-            "status": "processing"
+            "status": "processing",
+            "file_path": None,
+            "available_formats": []
         }
         return model_id
     
@@ -32,6 +34,14 @@ class StorageService:
         """Update the status of a model."""
         if model_id in self._models:
             self._models[model_id]["status"] = status
+
+    def set_model_file(self, model_id: str, file_path: str, fmt: str = "glb"):
+        """Set the file path and available format for a model."""
+        if model_id in self._models:
+            self._models[model_id]["file_path"] = file_path
+            formats = set(self._models[model_id].get("available_formats", []))
+            formats.add(fmt)
+            self._models[model_id]["available_formats"] = list(formats)
     
     def get_all_models(self) -> Dict[str, dict]:
         """Get all stored models."""

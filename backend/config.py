@@ -1,6 +1,35 @@
-"""Application configuration."""
+"""Application configuration.
+
+Loads configuration from .env file.
+Environment variables take precedence over .env file values.
+"""
+
 import os
+from pathlib import Path
 from typing import List
+
+from dotenv import dotenv_values
+
+# Load environment variables from .env file
+# Look for .env file in the backend directory
+env_path = Path(__file__).parent / ".env"
+if env_path.exists():
+    env_vars = dotenv_values(dotenv_path=env_path)
+    print(f"Loaded configuration from {env_path}")
+else:
+    # Try loading from current directory as fallback
+    env_vars = dotenv_values()
+    print("Loaded configuration from .env file in current directory")
+
+
+# Helper function to get config value (env vars override .env file)
+def get_config(key: str, default: str = "") -> str:
+    """Get configuration value from environment variable or .env file.
+
+    Environment variables take precedence over .env file values.
+    """
+    return os.getenv(key, env_vars.get(key, default))
+
 
 # API Configuration
 API_TITLE = "PromptAR Backend API"
@@ -8,18 +37,29 @@ API_VERSION = "1.0.0"
 API_DESCRIPTION = "API for generating 3D models from text prompts and serving them for AR visualization"
 
 # Server Configuration
-HOST = os.getenv("HOST", "0.0.0.0")
-PORT = int(os.getenv("PORT", 8000))
+HOST = get_config("HOST", "0.0.0.0")
+PORT = int(get_config("PORT", "8000"))
 
 # CORS Configuration
-ALLOWED_ORIGINS: List[str] = os.getenv(
-    "ALLOWED_ORIGINS", 
-    "*"  # In production, specify actual origins like ["http://localhost:3000", "https://yourapp.com"]
-).split(",") if os.getenv("ALLOWED_ORIGINS") != "*" else ["*"]
+allowed_origins_value = get_config("ALLOWED_ORIGINS", "*")
+ALLOWED_ORIGINS: List[str] = (
+    allowed_origins_value.split(",") if allowed_origins_value != "*" else ["*"]
+)
 
 # Model Configuration
-MODEL_STORAGE_PATH = os.getenv("MODEL_STORAGE_PATH", "./models")
-FAKE_MODEL_FILE = "fake_model.glb"
+MODEL_STORAGE_PATH = get_config("MODEL_STORAGE_PATH", "./models")
+
+# Hugging Face Configuration (Required)
+HF_TOKEN = get_config("HF_TOKEN", "")
+if not HF_TOKEN:
+    import warnings
+
+    warnings.warn(
+        "HF_TOKEN is not configured. Set HF_TOKEN in .env file or environment variable to enable model generation.",
+        UserWarning,
+    )
+HF_SDXL_MODEL = get_config("HF_SDXL_MODEL", "stabilityai/stable-diffusion-xl-base-1.0")
+HF_TRIPOSR_MODEL = get_config("HF_TRIPOSR_MODEL", "isl-org/TripoSR")
 
 # Generation Configuration (for future use)
-GENERATION_TIMEOUT = int(os.getenv("GENERATION_TIMEOUT", 300))  # 5 minutes
+GENERATION_TIMEOUT = int(get_config("GENERATION_TIMEOUT", "300"))  # 5 minutes
