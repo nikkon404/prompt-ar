@@ -58,8 +58,10 @@ if not HF_TOKEN:
         "HF_TOKEN is not configured. Set HF_TOKEN in .env file or environment variable to enable model generation.",
         UserWarning,
     )
-HF_SDXL_MODEL = get_config("HF_SDXL_MODEL", "stabilityai/stable-diffusion-xl-base-1.0")
-HF_TRIPOSR_MODEL = get_config("HF_TRIPOSR_MODEL", "isl-org/TripoSR")
 
-# Generation Configuration (for future use)
-GENERATION_TIMEOUT = int(get_config("GENERATION_TIMEOUT", "300"))  # 5 minutes
+# 3D Model Generation Configuration (Free Gradio Space)
+# Using Shap-E: https://huggingface.co/spaces/hysts/Shap-E
+# Generates 3D models directly from text prompts (~5-10s)
+# Uses OpenAI's Shap-E model - FREE but may have queue times on ZeroGPU
+# You can override with a different Space ID in .env if needed
+HF_TRIPOSR_SPACE_ID = "hysts/Shap-E"

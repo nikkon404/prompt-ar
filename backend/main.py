@@ -11,8 +11,6 @@ from config import (
     API_VERSION,
     ALLOWED_ORIGINS,
     HF_TOKEN,
-    HF_SDXL_MODEL,
-    HF_TRIPOSR_MODEL,
 )
 
 # Configure logging
@@ -23,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI application
 app = FastAPI(title=API_TITLE, description=API_DESCRIPTION, version=API_VERSION)
+
+# Initialize HuggingFaceService
+hf_service = None
 
 # Configure CORS (needed for Flutter web and mobile apps)
 app.add_middleware(
@@ -41,14 +42,23 @@ app.include_router(models_router)
 # Log startup info
 @app.on_event("startup")
 async def startup_event():
+    global hf_service
+
     if HF_TOKEN:
-        logger.info("✓ Hugging Face token configured - Model generation enabled")
-        logger.info(f"  SDXL Model: {HF_SDXL_MODEL}")
-        logger.info(f"  TripoSR Model: {HF_TRIPOSR_MODEL}")
+
+        # Initialize HuggingFaceService
+        try:
+            from services.huggingface_service import HuggingFaceService
+
+            logger.info("Initializing HuggingFaceService")
+            hf_service = HuggingFaceService()
+            logger.info("✓ HuggingFaceService initialized successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize HuggingFaceService: {e}")
+            hf_service = None
     else:
-        logger.error("✗ HF_TOKEN not configured - Model generation will fail!")
-        logger.error("  Set HF_TOKEN environment variable to enable generation")
-        logger.error("  Get your token from: https://huggingface.co/settings/tokens")
+        logger.error("❌ HF_TOKEN not configured - Model generation will fail!")
+
     logger.info(
         f"API server started. Visit http://localhost:8000/docs for API documentation"
     )

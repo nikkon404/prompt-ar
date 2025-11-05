@@ -1,3 +1,3 @@
-from .models import PromptRequest, GenerationResponse, ModelInfo
+from .models import PromptRequest, GenerationResponse
 
-__all__ = ["PromptRequest", "GenerationResponse", "ModelInfo"]
+__all__ = ["PromptRequest", "GenerationResponse"]

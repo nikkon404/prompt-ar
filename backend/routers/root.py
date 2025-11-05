@@ -12,8 +12,7 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "generate": "POST /api/models/generate",
-            "download": "GET /api/models/download/{model_id}",
-            "list": "GET /api/models"
+            "download": "GET /api/models/download/{model_id}"
         }
     }
 

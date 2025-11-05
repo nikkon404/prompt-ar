@@ -42,11 +42,4 @@ class StorageService:
             formats = set(self._models[model_id].get("available_formats", []))
             formats.add(fmt)
             self._models[model_id]["available_formats"] = list(formats)
-    
-    def get_all_models(self) -> Dict[str, dict]:
-        """Get all stored models."""
-        return self._models.copy()
-    
-    def get_models_count(self) -> int:
-        """Get the total number of stored models."""
-        return len(self._models)
+
