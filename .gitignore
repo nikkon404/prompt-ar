@@ -16,6 +16,9 @@ migrate_working_dir/
 *.iws
 .idea/
 
+#  add ios build folder
+frontend_prompt_ar/ios/build/
+
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
@@ -59,3 +62,4 @@ backend/models/images/784769bb-8463-47d0-83ab-4ce76f244446.png
 frontend_prompt_ar/.fvm/flutter_sdk
 frontend_prompt_ar/.fvm/fvm_config.json
 frontend_prompt_ar/.vscode/launch.json
+frontend_prompt_ar/.vscode/settings.json

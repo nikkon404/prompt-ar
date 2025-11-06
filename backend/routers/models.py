@@ -4,7 +4,7 @@ import logging
 import asyncio
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import Response
 
 from schemas.models import PromptRequest, GenerationResponse
 from services.storage_service import StorageService
@@ -80,36 +80,58 @@ async def generate_model(request: PromptRequest):
 
 @router.get("/download/{model_id}")
 async def download_model(model_id: str):
-    """Download a generated 3D model file (GLB format).
+    """Download GLB model file with brightness normalization applied on download.
 
-    Serves GLB files with proper CORS headers for AR web access.
+    This endpoint:
+    1. Loads the GLB file
+    2. Applies brightness normalization for AR visibility
+    3. Returns the normalized GLB file as a single binary file
+
+    Benefits:
+    - Single file download (faster, simpler)
+    - Smaller size (no zip overhead)
+    - Brightness normalization applied on-demand (always uses latest settings)
+    - Works directly with AR plugins (NodeType.fileSystemAppFolderGLB)
     """
-    logger.info(f"Downloading model file for model ID: {model_id}")
-    file_path = Path(MODEL_STORAGE_PATH) / f"{model_id}.glb"
+    hf_service = get_hf_service()
 
-    # Check if model file exists
-    if not file_path.exists():
-        logger.error(f"Model file not found: {file_path}")
+    logger.info(f"Preparing GLB file for download (model ID: {model_id})")
+    glb_path = Path(MODEL_STORAGE_PATH) / f"{model_id}.glb"
+
+    # Check if GLB file exists
+    if not glb_path.exists():
+        logger.error(f"GLB file not found: {glb_path}")
         raise HTTPException(status_code=404, detail="Model file not found")
 
-    logger.info(f"Serving model file: {file_path}")
+    try:
+        # Apply brightness normalization to GLB file before serving
+        logger.info("Applying brightness normalization to GLB file...")
+        hf_service._normalize_materials_for_ar(glb_path)
+        logger.info("✓ Brightness normalization applied to GLB")
 
-    # Read file content
-    with open(str(file_path), "rb") as f:
-        file_content = f.read()
+        # Read normalized GLB file content
+        with open(glb_path, "rb") as f:
+            glb_content = f.read()
 
-    # Return with CORS headers for AR web access
-    # Note: Our backend serves files directly (not through GitHub), so no ?raw=true needed
-    # The file is served with proper CORS headers for AR web access
-    return Response(
-        content=file_content,
-        media_type="model/gltf-binary",
-        headers={
-            # Don't use attachment - let browser handle it for AR
-            "Content-Type": "model/gltf-binary",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Cache-Control": "public, max-age=3600",
-        },
-    )
+        logger.info(
+            f"Serving normalized GLB file: {glb_path} ({len(glb_content)} bytes)"
+        )
+
+        # Return GLB file with proper headers
+        return Response(
+            content=glb_content,
+            media_type="model/gltf-binary",
+            headers={
+                "Content-Type": "model/gltf-binary",
+                "Content-Disposition": f'attachment; filename="{model_id}.glb"',
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+                "Cache-Control": "public, max-age=3600",
+            },
+        )
+    except Exception as e:
+        logger.error(f"Failed to prepare/serve GLB file: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to prepare/serve GLB file: {str(e)}"
+        )

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:prompt_ar/screens/welcome/welcome_screen.dart';
 import 'package:prompt_ar/screens/ar_view/ar_view_screen.dart';
-import 'bloc/ar_bloc/ar_bloc.dart';
 
 void main() async {
   // Ensure Flutter bindings are initialized first

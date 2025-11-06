@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:arkit_plugin/arkit_plugin.dart';
+import 'package:ar_flutter_plugin_2/widgets/ar_view.dart';
+import 'package:ar_flutter_plugin_2/managers/ar_session_manager.dart';
+import 'package:ar_flutter_plugin_2/managers/ar_object_manager.dart';
+import 'package:ar_flutter_plugin_2/managers/ar_anchor_manager.dart';
+import 'package:ar_flutter_plugin_2/managers/ar_location_manager.dart';
+import 'package:ar_flutter_plugin_2/datatypes/config_planedetection.dart';
 import 'package:prompt_ar/bloc/ar_bloc/ar_event.dart';
 import '../../bloc/ar_bloc/ar_bloc.dart';
 import '../../bloc/ar_bloc/ar_state.dart';
@@ -43,15 +48,24 @@ class _ARViewPageState extends State<ARViewPage> {
           builder: (context, arState) {
             return Stack(
               children: [
-                // AR Scene View
-                ARKitSceneView(
-                  showFeaturePoints: true,
-                  enableTapRecognizer: true,
-                  planeDetection: ARPlaneDetection.horizontalAndVertical,
-                  autoenablesDefaultLighting: false,
-                  onARKitViewCreated: (controller) {
-                    context.read<ARBloc>().add(ARInitialize(controller));
+                // AR View (using ar_flutter_plugin_2)
+                ARView(
+                  onARViewCreated: (
+                    ARSessionManager sessionManager,
+                    ARObjectManager objectManager,
+                    ARAnchorManager anchorManager,
+                    ARLocationManager locationManager,
+                  ) {
+                    context.read<ARBloc>().add(
+                      ARInitialize(
+                        sessionManager: sessionManager,
+                        objectManager: objectManager,
+                        anchorManager: anchorManager,
+                        locationManager: locationManager,
+                      ),
+                    );
                   },
+                  planeDetectionConfig: PlaneDetectionConfig.horizontalAndVertical,
                 ),
 
                 // Instruction text when model is ready

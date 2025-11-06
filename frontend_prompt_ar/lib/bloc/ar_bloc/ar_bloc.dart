@@ -2,12 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
-import 'package:arkit_plugin/arkit_plugin.dart';
-import 'package:collection/collection.dart';
+import 'package:ar_flutter_plugin_2/managers/ar_session_manager.dart';
+import 'package:ar_flutter_plugin_2/managers/ar_object_manager.dart';
+import 'package:ar_flutter_plugin_2/managers/ar_anchor_manager.dart';
+import 'package:ar_flutter_plugin_2/models/ar_node.dart';
+import 'package:ar_flutter_plugin_2/models/ar_anchor.dart';
+import 'package:ar_flutter_plugin_2/datatypes/node_types.dart';
+import 'package:ar_flutter_plugin_2/datatypes/hittest_result_types.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/generation_state.dart';
 import '../../repositories/model_repository.dart';
 import '../../services/download_service.dart';
+import '../../services/network_service.dart';
 import 'ar_event.dart';
 import 'ar_state.dart';
 
@@ -15,26 +21,49 @@ import 'ar_state.dart';
 class ARBloc extends Bloc<AREvent, ARState> {
   final ModelRepository _repository;
   final DownloadService _downloadService;
-  ARKitController? _arkitController;
-  ARKitNode? _currentModelNode;
+  final NetworkService _networkService;
+  ARSessionManager? _arSessionManager;
+  ARObjectManager? _arObjectManager;
+  ARAnchorManager? _arAnchorManager;
+  ARNode? _currentModelNode;
+  ARPlaneAnchor? _currentAnchor;
 
   ARBloc({
     ModelRepository? repository,
     DownloadService? downloadService,
+    NetworkService? networkService,
   })  : _repository = repository ?? ModelRepository(),
         _downloadService = downloadService ?? DownloadService(),
+        _networkService = networkService ?? NetworkService(),
         super(const ARState(generationState: GenerationState.initial)) {
     on<ARGenerate>(_onGenerate);
     on<ARReset>(_onReset);
     on<ARUpdatePrompt>(_onUpdatePrompt);
     on<ARInitialize>(_onInitialize);
+    on<ARHandleTap>(_onHandleTap);
   }
 
   FutureOr<void> _onInitialize(ARInitialize event, Emitter<ARState> emit) {
-    _arkitController = event.controller;
+    _arSessionManager = event.sessionManager;
+    _arObjectManager = event.objectManager;
+    _arAnchorManager = event.anchorManager;
+
+    // Initialize AR session
+    _arSessionManager?.onInitialize(
+      showAnimatedGuide: false, // Hide instruction overlay
+      showFeaturePoints: false,
+      showPlanes: true,
+      customPlaneTexturePath: null,
+      showWorldOrigin: false,
+      handlePans: true,
+      handleRotation: true,
+    );
+
+    // Initialize object manager
+    _arObjectManager?.onInitialize();
 
     // Set tap handler for placing models (only works when model is ready)
-    _arkitController?.onARTap = (ar) {
+    _arSessionManager?.onPlaneOrPointTap = (hitTestResults) {
       final currentState = state;
       if (currentState.generationState != GenerationState.arReady ||
           currentState.modelResponse == null ||
@@ -43,101 +72,96 @@ class ARBloc extends Bloc<AREvent, ARState> {
         return;
       }
 
-      final point = ar.firstWhereOrNull(
-        (o) => o.type == ARKitHitTestResultType.featurePoint,
-      );
-      if (point != null) {
-        handleARTap(point, currentState.modelResponse!.localFilePath!);
-      }
+      // Dispatch tap event to handle model placement
+      add(ARHandleTap(hitTestResults));
     };
-
-    // Add lighting to make models brighter
-    if (_arkitController != null) {
-      _addLightingToScene(_arkitController!);
-    }
 
     debugPrint('ARView: AR session initialized');
 
     emit(state.copyWith(generationState: GenerationState.idle));
   }
 
-  /// Add directional lighting to the AR scene
-  void _addLightingToScene(ARKitController arkitController) {
-    // Add a directional light pointing down to simulate overhead lighting
-    final light = ARKitLight(
-      type: ARKitLightType.directional,
-      color: Colors.white,
-    );
-
-    // Set intensity to make it bright
-    light.intensity.value = 2000; // High intensity for brightness
-
-    final lightNode = ARKitNode(
-      light: light,
-      position: vector.Vector3(0, 2, 0), // Position light above the scene
-      eulerAngles:
-          vector.Vector3(-1.5708, 0, 0), // Rotate to point down (90 degrees)
-      name: 'directional_light',
-    );
-
-    arkitController.add(lightNode);
-    debugPrint(
-        '💡 Added directional light to AR scene (intensity: ${light.intensity.value})');
-  }
-
-  /// Handle AR tap event to place model
-  void handleARTap(ARKitTestResult point, String localFilePath) {
-    if (_arkitController == null) {
-      debugPrint('ARView: ARKit controller not initialized');
+  FutureOr<void> _onHandleTap(ARHandleTap event, Emitter<ARState> emit) async {
+    if (_arObjectManager == null || _arAnchorManager == null) {
+      debugPrint('ARView: AR managers not initialized');
       return;
     }
 
-    final position = vector.Vector3(
-      point.worldTransform.getColumn(3).x,
-      point.worldTransform.getColumn(3).y,
-      point.worldTransform.getColumn(3).z,
+    final currentState = state;
+    if (currentState.modelResponse?.localFilePath == null) {
+      debugPrint('ARView: No model file path available');
+      return;
+    }
+
+    final hitTestResults = event.hitTestResults;
+    if (hitTestResults.isEmpty) return;
+
+    // Find the first plane hit test result
+    final planeHitTestResult = hitTestResults.firstWhere(
+      (hitTestResult) => hitTestResult.type == ARHitTestResultType.plane,
+      orElse: () => hitTestResults.first,
     );
 
-    // Remove existing model if any
+    // Create ARPlaneAnchor at the tap location
+    final newAnchor = ARPlaneAnchor(
+      transformation: planeHitTestResult.worldTransform,
+    );
+
+    // Remove existing anchor and model if any
+    if (_currentAnchor != null) {
+      _arAnchorManager!.removeAnchor(_currentAnchor!);
+      _currentAnchor = null;
+    }
     if (_currentModelNode != null) {
-      _arkitController!.remove(_currentModelNode!.name);
+      _arObjectManager!.removeNode(_currentModelNode!);
       _currentModelNode = null;
     }
 
-    // Extract just the filename from the full path
-    // ARKit expects just the filename when using AssetType.documents
-    final fileName = localFilePath.split('/').last;
+    // Add anchor
+    final didAddAnchor = await _arAnchorManager!.addAnchor(newAnchor);
 
-    debugPrint('ARView: Creating ARKitGltfNode from local file');
-    debugPrint('ARView: Local file path: $localFilePath');
-    debugPrint('ARView: File name: $fileName');
+    if (didAddAnchor == true) {
+      _currentAnchor = newAnchor;
 
-    // Create GLB node from local file path
-    final node = ARKitGltfNode(
-      assetType: AssetType.documents,
-      url: fileName,
-      scale: vector.Vector3(0.7, 0.7, 0.7),
-      position: position,
-    );
+      // Place GLB model at anchor
+      final node = ARNode(
+        type: NodeType.fileSystemAppFolderGLB,
+        uri: currentState.modelResponse!.localFilePath!, // e.g., "tiger.glb"
+        scale: vector.Vector3(16, 16, 16),
+      );
 
-    _arkitController!.add(node);
-    _currentModelNode = node;
-    debugPrint('✅ Model placed on plane at: $position');
+      debugPrint('🔍 Placing GLB model at anchor: ${newAnchor.name}');
+      debugPrint('   Node type: ${node.type}');
+      debugPrint('   URI: ${node.uri}');
+
+      final didAddNode = await _arObjectManager!.addNode(node, planeAnchor: newAnchor);
+
+      if (didAddNode == true) {
+        _currentModelNode = node;
+        debugPrint('✅ Model placed at anchor: ${newAnchor.name}');
+      } else {
+        debugPrint('❌ Failed to place model at anchor: ${newAnchor.name}');
+      }
+    }
   }
 
   /// Clear the current model from AR scene
   void clearModel() {
-    if (_currentModelNode != null && _arkitController != null) {
-      _arkitController!.remove(_currentModelNode!.name);
+    if (_currentModelNode != null && _arObjectManager != null) {
+      _arObjectManager!.removeNode(_currentModelNode!);
       _currentModelNode = null;
-      debugPrint('ARView: Model cleared from scene');
     }
+    if (_currentAnchor != null && _arAnchorManager != null) {
+      _arAnchorManager!.removeAnchor(_currentAnchor!);
+      _currentAnchor = null;
+    }
+    debugPrint('ARView: Model cleared from scene');
   }
 
   /// Dispose AR resources
   void disposeAR() {
     clearModel();
-    _arkitController?.dispose();
+    _arSessionManager?.dispose();
   }
 
   Future<void> _onGenerate(
@@ -162,9 +186,12 @@ class ARBloc extends Bloc<AREvent, ARState> {
         modelResponse: response,
       ));
 
-      // Downloading state - downloading model file
+      // Downloading state - downloading GLB model directly
+      // Brightness normalization is already applied to GLB during generation
+      // Single file download (faster, simpler than GLTF zip)
+      final downloadUrl = '${_networkService.baseUrl}/api/models/download/${response.modelId}';
       final localFilePath = await _downloadService.downloadModel(
-        response.downloadUrl,
+        downloadUrl,
         response.modelId,
       );
 
