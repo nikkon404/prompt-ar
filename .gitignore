@@ -56,3 +56,6 @@ frontend_prompt_ar/.env.local
 backend/models/041bc06f-a622-400d-8857-1a430a10caa7.glb
 backend/models/images/50561af0-7724-4b79-88f6-f8bb55e667fb.png
 backend/models/images/784769bb-8463-47d0-83ab-4ce76f244446.png
+frontend_prompt_ar/.fvm/flutter_sdk
+frontend_prompt_ar/.fvm/fvm_config.json
+frontend_prompt_ar/.vscode/launch.json

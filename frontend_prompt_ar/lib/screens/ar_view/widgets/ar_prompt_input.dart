@@ -1,0 +1,139 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../bloc/ar_bloc/ar_bloc.dart';
+import '../../../bloc/ar_bloc/ar_event.dart';
+import '../../../bloc/ar_bloc/ar_state.dart';
+import '../../../models/generation_state.dart';
+
+/// Floating prompt input widget for AR view
+class ARPromptInput extends StatefulWidget {
+  const ARPromptInput({super.key});
+
+  @override
+  State<ARPromptInput> createState() => _ARPromptInputState();
+}
+
+class _ARPromptInputState extends State<ARPromptInput> {
+  final TextEditingController _textController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _submitPrompt() {
+    final prompt = _textController.text.trim();
+    if (prompt.isNotEmpty) {
+      context.read<ARBloc>().add(ARGenerate(prompt));
+      _textController.clear();
+      _focusNode.unfocus();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ARBloc, ARState>(
+      builder: (context, state) {
+        final isLoading = state.generationState == GenerationState.processing ||
+            state.generationState == GenerationState.downloading;
+
+        return Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.7),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            child: SafeArea(
+              child: Row(
+                children: [
+                  // Text input field
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: TextField(
+                        controller: _textController,
+                        focusNode: _focusNode,
+                        enabled: !isLoading,
+                        decoration: InputDecoration(
+                          hintText: 'Enter your prompt (e.g., "wooden chair")',
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade600,
+                          ),
+                          counterText: '',
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 14,
+                          ),
+                        ),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                        onSubmitted: (_) => _submitPrompt(),
+                        maxLines: null,
+                        maxLength: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Submit button
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isLoading
+                          ? Colors.grey.shade600
+                          : Colors.deepPurple.shade600,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: isLoading ? null : _submitPrompt,
+                        borderRadius: BorderRadius.circular(30),
+                        child: Container(
+                          width: 56,
+                          height: 56,
+                          alignment: Alignment.center,
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.send,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

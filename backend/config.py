@@ -59,9 +59,7 @@ if not HF_TOKEN:
         UserWarning,
     )
 
-# 3D Model Generation Configuration (Free Gradio Space)
-# Using Shap-E: https://huggingface.co/spaces/hysts/Shap-E
-# Generates 3D models directly from text prompts (~5-10s)
-# Uses OpenAI's Shap-E model - FREE but may have queue times on ZeroGPU
-# You can override with a different Space ID in .env if needed
-HF_TRIPOSR_SPACE_ID = "hysts/Shap-E"
+# 3D Model Generation Configuration
+# Using TRELLIS: https://huggingface.co/spaces/dkatz2391/TRELLIS_TextTo3D_Try2
+# Generates textured GLB files directly from text prompts
+# Uses texture_size parameter to ensure textures are embedded in GLB files

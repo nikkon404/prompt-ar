@@ -4,10 +4,11 @@ import logging
 import asyncio
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from schemas.models import PromptRequest, GenerationResponse
 from services.storage_service import StorageService
+from config import MODEL_STORAGE_PATH
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/models", tags=["Models"])
@@ -38,28 +39,34 @@ async def generate_model(request: PromptRequest):
 
     # Create model record
     model_id = storage_service.create_model_record(request.prompt)
+    # model_id = "mesh_horse_1762378891721_enhanced"
+    # model_id = "BoxTextured"
 
     logger.info(
         f"Generating 3D model for prompt: '{request.prompt[:50]}...' (ID: {model_id})"
     )
 
     try:
-        # Generate 3D model directly from text prompt
-        glb_path = await asyncio.to_thread(hf_service.text_to_3d, request.prompt)
+        # Generate 3D model directly from text prompt, passing model_id for filename
+        glb_path = await asyncio.to_thread(
+            hf_service.text_to_3d, request.prompt, model_id
+        )
         logger.info(f"3D model generated: {glb_path}")
 
-        # Update storage with model file
+        # # # Update storage with model file
         storage_service.set_model_file(model_id, glb_path, fmt="glb")
         storage_service.update_model_status(model_id, "completed")
 
         logger.info(f"✓ 3D model generation completed for {model_id}")
 
-        return GenerationResponse(
+        resp = GenerationResponse(
             status="success",
             message="3D model generated successfully",
             model_id=model_id,
             download_url=f"/api/models/download/{model_id}",
         )
+        logger.info(f"Generation response: {resp}")
+        return resp
 
     except RuntimeError as e:
         logger.error(f"Generation failed: {str(e)}")
@@ -73,25 +80,36 @@ async def generate_model(request: PromptRequest):
 
 @router.get("/download/{model_id}")
 async def download_model(model_id: str):
-    """Download a generated 3D model file (GLB format)."""
-    model = storage_service.get_model(model_id)
+    """Download a generated 3D model file (GLB format).
 
-    if not model:
-        raise HTTPException(status_code=404, detail="Model not found")
+    Serves GLB files with proper CORS headers for AR web access.
+    """
+    logger.info(f"Downloading model file for model ID: {model_id}")
+    file_path = Path(MODEL_STORAGE_PATH) / f"{model_id}.glb"
 
-    if model["status"] != "completed":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Model generation status: {model['status']}. Model is not ready for download.",
-        )
-
-    file_path = model.get("file_path")
-    if not file_path or not Path(file_path).exists():
+    # Check if model file exists
+    if not file_path.exists():
+        logger.error(f"Model file not found: {file_path}")
         raise HTTPException(status_code=404, detail="Model file not found")
 
     logger.info(f"Serving model file: {file_path}")
-    return FileResponse(
-        path=file_path,
+
+    # Read file content
+    with open(str(file_path), "rb") as f:
+        file_content = f.read()
+
+    # Return with CORS headers for AR web access
+    # Note: Our backend serves files directly (not through GitHub), so no ?raw=true needed
+    # The file is served with proper CORS headers for AR web access
+    return Response(
+        content=file_content,
         media_type="model/gltf-binary",
-        filename=f"{model_id}.glb",
+        headers={
+            # Don't use attachment - let browser handle it for AR
+            "Content-Type": "model/gltf-binary",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Cache-Control": "public, max-age=3600",
+        },
     )
