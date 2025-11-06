@@ -8,6 +8,7 @@ from fastapi.responses import Response
 
 from schemas.models import PromptRequest, GenerationResponse
 from services.storage_service import StorageService
+from services.ar_material_service import normalize_materials_for_ar
 from config import MODEL_STORAGE_PATH
 
 logger = logging.getLogger(__name__)
@@ -106,7 +107,7 @@ async def download_model(model_id: str):
     try:
         # Apply brightness normalization to GLB file before serving
         logger.info("Applying brightness normalization to GLB file...")
-        hf_service._normalize_materials_for_ar(glb_path)
+        normalize_materials_for_ar(glb_path)
         logger.info("✓ Brightness normalization applied to GLB")
 
         # Read normalized GLB file content

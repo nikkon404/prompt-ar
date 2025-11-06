@@ -8,12 +8,14 @@ class ARState extends Equatable {
   final ModelResponse? modelResponse;
   final String currentPrompt;
   final String? errorMessage;
+  final bool isModelPlaced; // Whether model has been placed in AR scene
 
   const ARState({
     this.generationState = GenerationState.idle,
     this.modelResponse,
     this.currentPrompt = '',
     this.errorMessage,
+    this.isModelPlaced = false,
   });
 
   ARState copyWith({
@@ -22,12 +24,14 @@ class ARState extends Equatable {
     String? currentPrompt,
     String? errorMessage,
     bool clearModelResponse = false,
+    bool? isModelPlaced,
   }) {
     return ARState(
       generationState: generationState ?? this.generationState,
       modelResponse: clearModelResponse ? null : (modelResponse ?? this.modelResponse),
       currentPrompt: currentPrompt ?? this.currentPrompt,
       errorMessage: errorMessage,
+      isModelPlaced: isModelPlaced ?? this.isModelPlaced,
     );
   }
 
@@ -37,6 +41,7 @@ class ARState extends Equatable {
         modelResponse,
         currentPrompt,
         errorMessage,
+        isModelPlaced,
       ];
 }
 

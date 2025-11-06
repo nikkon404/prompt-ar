@@ -128,16 +128,19 @@ class ARBloc extends Bloc<AREvent, ARState> {
         type: NodeType.fileSystemAppFolderGLB,
         uri: currentState.modelResponse!.localFilePath!, // e.g., "tiger.glb"
         scale: vector.Vector3(16, 16, 16),
+        position: vector.Vector3(0.0, 0.2, 0.0),
       );
 
       debugPrint('🔍 Placing GLB model at anchor: ${newAnchor.name}');
       debugPrint('   Node type: ${node.type}');
       debugPrint('   URI: ${node.uri}');
 
-      final didAddNode = await _arObjectManager!.addNode(node, planeAnchor: newAnchor);
+      final didAddNode =
+          await _arObjectManager!.addNode(node, planeAnchor: newAnchor);
 
       if (didAddNode == true) {
         _currentModelNode = node;
+        emit(state.copyWith(isModelPlaced: true));
         debugPrint('✅ Model placed at anchor: ${newAnchor.name}');
       } else {
         debugPrint('❌ Failed to place model at anchor: ${newAnchor.name}');
@@ -189,7 +192,8 @@ class ARBloc extends Bloc<AREvent, ARState> {
       // Downloading state - downloading GLB model directly
       // Brightness normalization is already applied to GLB during generation
       // Single file download (faster, simpler than GLTF zip)
-      final downloadUrl = '${_networkService.baseUrl}/api/models/download/${response.modelId}';
+      final downloadUrl =
+          '${_networkService.baseUrl}/api/models/download/${response.modelId}';
       final localFilePath = await _downloadService.downloadModel(
         downloadUrl,
         response.modelId,
@@ -231,6 +235,7 @@ class ARBloc extends Bloc<AREvent, ARState> {
       generationState: GenerationState.idle,
       errorMessage: null,
       clearModelResponse: true,
+      isModelPlaced: false,
     ));
   }
 

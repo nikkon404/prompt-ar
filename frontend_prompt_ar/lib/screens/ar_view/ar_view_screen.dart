@@ -37,14 +37,77 @@ class _ARViewPageState extends State<ARViewPage> {
         backgroundColor: Colors.deepPurple,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.of(context).pop();
+          onPressed: () async {
+            // ask for confirmation
+            final confirmed = await showDialog(
+              context: context,
+              builder: (context) => AlertDialog.adaptive(
+                title: const Text('Confirmation'),
+                content: const Text(
+                    'Are you sure you want to go back? This will clear the current model from the AR scene.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                    child: const Text('Yes'),
+                  ),
+                ],
+              ),
+            );
+            if (confirmed && context.mounted) {
+              context.read<ARBloc>().add(const ARReset());
+              Navigator.of(context).pop();
+            }
           },
         ),
       ),
       body: BlocProvider(
         create: (context) => ARBloc(),
-        child: BlocBuilder<ARBloc, ARState>(
+        child: BlocConsumer<ARBloc, ARState>(
+          // show info dialof once  state is ready and previous state was not ready
+          listenWhen: (previous, current) =>
+              previous.generationState == GenerationState.downloading &&
+              current.generationState == GenerationState.arReady,
+
+          listener: (context, state) {
+            // show info dialof once  state is ready and previous state was not ready
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog.adaptive(
+                content: const Column(
+                  children: [
+                    // success icon
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 30,
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                        'The 3D model has been loaded into the AR scene. Tap on a detected surface to place the model.'),
+                    SizedBox(height: 16),
+                    Icon(
+                      Icons.touch_app_outlined,
+                      color: Colors.white,
+                      size: 70,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+          },
           builder: (context, arState) {
             return Stack(
               children: [
@@ -57,15 +120,16 @@ class _ARViewPageState extends State<ARViewPage> {
                     ARLocationManager locationManager,
                   ) {
                     context.read<ARBloc>().add(
-                      ARInitialize(
-                        sessionManager: sessionManager,
-                        objectManager: objectManager,
-                        anchorManager: anchorManager,
-                        locationManager: locationManager,
-                      ),
-                    );
+                          ARInitialize(
+                            sessionManager: sessionManager,
+                            objectManager: objectManager,
+                            anchorManager: anchorManager,
+                            locationManager: locationManager,
+                          ),
+                        );
                   },
-                  planeDetectionConfig: PlaneDetectionConfig.horizontalAndVertical,
+                  planeDetectionConfig:
+                      PlaneDetectionConfig.horizontalAndVertical,
                 ),
 
                 // Instruction text when model is ready
