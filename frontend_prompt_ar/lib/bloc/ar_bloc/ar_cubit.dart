@@ -205,10 +205,6 @@ class ARCubit extends Cubit<ARState> {
         generationState: GenerationState.error,
         errorMessage: e.toString(),
       ));
-
-      // Auto reset after error
-      await Future.delayed(const Duration(seconds: 3));
-      reset();
     }
   }
 
@@ -303,10 +299,6 @@ class ARCubit extends Cubit<ARState> {
         generationState: GenerationState.error,
         errorMessage: e.toString(),
       ));
-
-      // Auto reset after error
-      await Future.delayed(const Duration(seconds: 3));
-      reset();
     }
   }
 

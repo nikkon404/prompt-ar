@@ -49,11 +49,13 @@ class ModelRepository {
         throw Exception(
             'Failed to generate model: ${response.statusCode} - $errorBody');
       }
+    } on TimeoutException {
+      throw Exception('Model generation timed out. Please try again.');
     } on NetworkException catch (e) {
       if (e.statusCode == 408) {
         throw Exception('Model generation timed out. Please try again.');
       }
-      throw Exception('Network error: ${e.message}');
+      throw Exception('Network error has occurred. Please try again.');
     } catch (e) {
       throw Exception('Error generating model: ${e.toString()}');
     }
@@ -169,19 +171,6 @@ class ModelRepository {
     } catch (e) {
       debugPrint('ModelRepository: Error getting downloaded models: $e');
       return [];
-    }
-  }
-
-  /// Check if a model file exists locally
-  Future<bool> modelExists(String modelId) async {
-    try {
-      final documentsDir = await getApplicationDocumentsDirectory();
-      final fileName = '$modelId.glb';
-      final filePath = path.join(documentsDir.path, fileName);
-      final file = File(filePath);
-      return await file.exists();
-    } catch (e) {
-      return false;
     }
   }
 

@@ -5,12 +5,10 @@ class TextInput extends StatefulWidget {
     super.key,
     required this.textController,
     required this.focusNode,
-    required this.isLoading,
   });
 
   final TextEditingController textController;
   final FocusNode focusNode;
-  final bool isLoading;
 
   @override
   State<TextInput> createState() => _TextInputState();
@@ -27,7 +25,6 @@ class _TextInputState extends State<TextInput> {
         child: TextField(
           controller: widget.textController,
           focusNode: widget.focusNode,
-          enabled: !widget.isLoading,
           textInputAction: TextInputAction.done,
           onSubmitted: (_) {
             // Dismiss keyboard when "Done" is pressed

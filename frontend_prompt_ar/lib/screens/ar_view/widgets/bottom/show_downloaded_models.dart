@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prompt_ar/bloc/ar_bloc/ar_cubit.dart';
 import 'package:prompt_ar/bloc/ar_bloc/ar_state.dart';
+import 'package:prompt_ar/screens/ar_view/widgets/show_snackbar.dart';
 
 class ShowDownloadedModels extends StatelessWidget {
   const ShowDownloadedModels({super.key});
@@ -72,6 +73,10 @@ class ShowDownloadedModels extends StatelessWidget {
                 bloc: cubit,
                 onModelApply: (modelId) {
                   cubit.loadExistingModel(modelId);
+                  showSnackbar(
+                    context,
+                    'Applied model #${models.indexOf(modelId) + 1} in AR, Tap on screen to place it.',
+                  );
                   Navigator.of(context).pop();
                 },
               );
@@ -183,7 +188,7 @@ class _LoadModelDialog extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Downloaded Models',
+                'Previously Downloaded',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,

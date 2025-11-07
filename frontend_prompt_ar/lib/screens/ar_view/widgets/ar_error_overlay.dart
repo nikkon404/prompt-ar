@@ -23,10 +23,10 @@ class ARErrorOverlay extends StatelessWidget {
             children: [
               const Icon(
                 Icons.error_outline,
-                size: 80,
+                size: 60,
                 color: Colors.red,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 15),
               const Text(
                 'Error',
                 style: TextStyle(
@@ -58,7 +58,7 @@ class ARErrorOverlay extends StatelessWidget {
                     vertical: 16,
                   ),
                 ),
-                child: const Text('Try Again'),
+                child: const Text('Dismiss'),
               ),
             ],
           ),

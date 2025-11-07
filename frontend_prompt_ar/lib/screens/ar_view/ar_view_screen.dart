@@ -146,11 +146,10 @@ class _ARViewPageState extends State<ARViewPage> {
                 if (arState.generationState == GenerationState.error)
                   ARErrorOverlay(errorMessage: arState.errorMessage),
 
-                // Prompt input at bottom (always visible except when loading)
-                if (![
-                  GenerationState.generating,
-                  GenerationState.downloading,
-                  GenerationState.initial,
+                // Prompt input at bottom (always visible except when loading or error)
+                if ([
+                  GenerationState.arReady,
+                  GenerationState.idle,
                 ].contains(arState.generationState))
                   const BottomWidget(),
 
@@ -187,7 +186,7 @@ class _ClearAllButton extends StatelessWidget {
           }
           return CircleAvatar(
             child: IconButton(
-              icon: const Icon(Icons.clear_all),
+              icon: const Icon(Icons.delete_sweep_outlined),
               tooltip: 'Clear Scene',
               onPressed: () async {
                 final cubit = context.read<ARCubit>();
