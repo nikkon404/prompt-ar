@@ -126,6 +126,7 @@ class ModelRepository {
 
   /// Get list of all downloaded models from documents directory
   /// Returns list of model IDs (filenames without .glb extension)
+  /// Sorted by creation date descending (latest first)
   Future<List<String>> getDownloadedModels() async {
     try {
       final documentsDir = await getApplicationDocumentsDirectory();
@@ -136,18 +137,35 @@ class ModelRepository {
       }
 
       final files = dir.listSync();
-      final modelFiles = files
-          .whereType<File>()
-          .where((file) => file.path.endsWith('.glb'))
-          .map((file) {
-        // return filename and extension
-        final fileName = path.basename(file.path);
-        return fileName;
-      }).toList();
+      final modelFiles = <Map<String, dynamic>>[];
+
+      // Collect files with their modification times
+      for (final file in files.whereType<File>()) {
+        if (file.path.endsWith('.glb')) {
+          try {
+            final stat = await file.stat();
+            final fileName = path.basename(file.path);
+            modelFiles.add({
+              'fileName': fileName,
+              'modified': stat.modified,
+            });
+          } catch (e) {
+            debugPrint(
+                'ModelRepository: Error getting stat for ${file.path}: $e');
+          }
+        }
+      }
+
+      // Sort by modification time descending (latest first)
+      modelFiles.sort((a, b) =>
+          (b['modified'] as DateTime).compareTo(a['modified'] as DateTime));
+
+      final sortedFileNames =
+          modelFiles.map((item) => item['fileName'] as String).toList();
 
       debugPrint(
-          'ModelRepository: Found ${modelFiles.length} downloaded models');
-      return modelFiles;
+          'ModelRepository: Found ${sortedFileNames.length} downloaded models (sorted by date)');
+      return sortedFileNames;
     } catch (e) {
       debugPrint('ModelRepository: Error getting downloaded models: $e');
       return [];

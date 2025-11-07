@@ -24,8 +24,9 @@ class ARCubit extends Cubit<ARState> {
   ARSessionManager? _arSessionManager;
   ARObjectManager? _arObjectManager;
   ARAnchorManager? _arAnchorManager;
-  ARNode? _currentModelNode;
-  ARPlaneAnchor? _currentAnchor;
+  // Track multiple models in the scene - keyed by model ID
+  final Map<String, ARNode> _placedModelNodes = {};
+  final Map<String, ARPlaneAnchor> _placedAnchors = {};
 
   ARCubit({
     ModelRepository? repository,
@@ -58,12 +59,19 @@ class ARCubit extends Cubit<ARState> {
     // Initialize object manager
     _arObjectManager?.onInitialize();
 
-    // Set tap handler for placing models (only works when model is ready)
+    // Set tap handler for placing models (works when model is ready or when idle with modelResponse)
     _arSessionManager?.onPlaneOrPointTap = (hitTestResults) {
       final currentState = state;
-      if (currentState.generationState != GenerationState.arReady ||
-          currentState.modelResponse == null ||
-          currentState.modelResponse?.localFilePath == null) {
+      // Allow placing if:
+      // 1. Model is ready (arReady state), OR
+      // 2. State is idle but we have a modelResponse (can place same model again)
+      final canPlace =
+          (currentState.generationState == GenerationState.arReady ||
+                  (currentState.generationState == GenerationState.idle &&
+                      currentState.modelResponse != null)) &&
+              currentState.modelResponse?.localFilePath != null;
+
+      if (!canPlace) {
         debugPrint('ARView: Tap ignored - model not ready');
         return;
       }
@@ -91,6 +99,13 @@ class ARCubit extends Cubit<ARState> {
     }
     if (hitTestResults.isEmpty) return;
 
+    final baseModelId = currentState.modelResponse!.modelId;
+    final modelFilePath = currentState.modelResponse!.localFilePath!;
+
+    // Generate unique ID for this placement (allows same model to be placed multiple times)
+    final placementId =
+        '${baseModelId}_${DateTime.now().millisecondsSinceEpoch}';
+
     // Find the first plane hit test result
     final planeHitTestResult = hitTestResults.firstWhere(
       (hitTestResult) => hitTestResult.type == ARHitTestResultType.plane,
@@ -102,31 +117,24 @@ class ARCubit extends Cubit<ARState> {
       transformation: planeHitTestResult.worldTransform,
     );
 
-    // Remove existing anchor and model if any
-    if (_currentAnchor != null) {
-      _arAnchorManager!.removeAnchor(_currentAnchor!);
-      _currentAnchor = null;
-    }
-    if (_currentModelNode != null) {
-      _arObjectManager!.removeNode(_currentModelNode!);
-      _currentModelNode = null;
-    }
-
     // Add anchor
     final didAddAnchor = await _arAnchorManager!.addAnchor(newAnchor);
 
     if (didAddAnchor == true) {
-      _currentAnchor = newAnchor;
+      // Store anchor for this model placement
+      _placedAnchors[placementId] = newAnchor;
 
       // Place GLB model at anchor
       final node = ARNode(
         type: NodeType.fileSystemAppFolderGLB,
-        uri: currentState.modelResponse!.localFilePath!, // e.g., "tiger.glb"
+        uri: modelFilePath,
         scale: vector.Vector3(16, 16, 16),
         position: vector.Vector3(0.0, 0.0, 0.0),
       );
 
       debugPrint('🔍 Placing GLB model at anchor: ${newAnchor.name}');
+      debugPrint('   Base Model ID: $baseModelId');
+      debugPrint('   Placement ID: $placementId');
       debugPrint('   Node type: ${node.type}');
       debugPrint('   URI: ${node.uri}');
 
@@ -134,10 +142,26 @@ class ARCubit extends Cubit<ARState> {
           await _arObjectManager!.addNode(node, planeAnchor: newAnchor);
 
       if (didAddNode == true) {
-        _currentModelNode = node;
-        emit(state.copyWith(isModelPlaced: true));
+        // Store node for this model placement
+        _placedModelNodes[placementId] = node;
+
+        // Add placement ID to placed models list
+        final updatedPlacedModels = List<String>.from(state.placedModelIds)
+          ..add(placementId);
+
+        // Reset to idle so user can add more models, but keep the modelResponse
+        // so it can be placed again if needed
+        emit(state.copyWith(
+          generationState: GenerationState.idle,
+          placedModelIds: updatedPlacedModels,
+          isModelPlaced: true,
+        ));
         debugPrint('✅ Model placed at anchor: ${newAnchor.name}');
+        debugPrint('   Total models in scene: ${updatedPlacedModels.length}');
       } else {
+        // Remove anchor if node placement failed
+        _arAnchorManager!.removeAnchor(newAnchor);
+        _placedAnchors.remove(placementId);
         debugPrint('❌ Failed to place model at anchor: ${newAnchor.name}');
       }
     }
@@ -188,34 +212,60 @@ class ARCubit extends Cubit<ARState> {
     }
   }
 
-  /// Clear the current model from AR scene
-  void clearModel() {
-    if (_currentModelNode != null && _arObjectManager != null) {
-      _arObjectManager!.removeNode(_currentModelNode!);
-      _currentModelNode = null;
+  /// Clear all models from AR scene
+  void clearAllModels() {
+    if (_arObjectManager != null) {
+      for (final node in _placedModelNodes.values) {
+        _arObjectManager!.removeNode(node);
+      }
+      _placedModelNodes.clear();
     }
-    if (_currentAnchor != null && _arAnchorManager != null) {
-      _arAnchorManager!.removeAnchor(_currentAnchor!);
-      _currentAnchor = null;
+    if (_arAnchorManager != null) {
+      for (final anchor in _placedAnchors.values) {
+        _arAnchorManager!.removeAnchor(anchor);
+      }
+      _placedAnchors.clear();
     }
-    debugPrint('ARView: Model cleared from scene');
+    debugPrint('ARView: All models cleared from scene');
+  }
+
+  /// Clear a specific model from AR scene by ID
+  void clearModel(String modelId) {
+    if (_placedModelNodes.containsKey(modelId) && _arObjectManager != null) {
+      _arObjectManager!.removeNode(_placedModelNodes[modelId]!);
+      _placedModelNodes.remove(modelId);
+    }
+    if (_placedAnchors.containsKey(modelId) && _arAnchorManager != null) {
+      _arAnchorManager!.removeAnchor(_placedAnchors[modelId]!);
+      _placedAnchors.remove(modelId);
+    }
+    final updatedPlacedModels =
+        state.placedModelIds.where((id) => id != modelId).toList();
+    emit(state.copyWith(placedModelIds: updatedPlacedModels));
+    debugPrint('ARView: Model $modelId cleared from scene');
   }
 
   /// Dispose AR resources
   void disposeAR() {
-    clearModel();
+    clearAllModels();
     _arSessionManager?.dispose();
   }
 
-  /// Reset AR state to idle
+  /// Reset AR state to idle (clears current model response but keeps placed models)
   Future<void> reset() async {
-    // Clear model from AR scene when resetting
-    clearModel();
-
     emit(state.copyWith(
       generationState: GenerationState.idle,
       errorMessage: null,
       clearModelResponse: true,
+      isModelPlaced: false,
+    ));
+  }
+
+  /// Clear all placed models from scene
+  void clearScene() {
+    clearAllModels();
+    emit(state.copyWith(
+      placedModelIds: [],
       isModelPlaced: false,
     ));
   }

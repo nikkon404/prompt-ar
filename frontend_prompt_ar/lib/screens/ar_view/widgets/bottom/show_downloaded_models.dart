@@ -8,7 +8,7 @@ class ShowDownloadedModels extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bloc = context.read<ARCubit>();
+    final cubit = context.read<ARCubit>();
 
     /// Show bottom sheet with list of downloaded models
     void showLoadModelDialog() {
@@ -22,7 +22,7 @@ class ShowDownloadedModels extends StatelessWidget {
           ),
         ),
         builder: (context) => BlocProvider.value(
-          value: bloc,
+          value: cubit,
           child: BlocBuilder<ARCubit, ARState>(
             builder: (context, state) {
               if (state.downloadedModels == null) {
@@ -69,9 +69,9 @@ class ShowDownloadedModels extends StatelessWidget {
 
               return _LoadModelDialog(
                 models: models,
-                bloc: bloc,
+                bloc: cubit,
                 onModelApply: (modelId) {
-                  bloc.loadExistingModel(modelId);
+                  cubit.loadExistingModel(modelId);
                   Navigator.of(context).pop();
                 },
               );
@@ -129,9 +129,7 @@ class _LoadModelDialog extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog.adaptive(
         title: const Text('Delete Model'),
-        content: Text(
-          'Are you sure you want to delete this model?\n\n${modelId.length > 30 ? '${modelId.substring(0, 30)}...' : modelId}',
-        ),
+        content: const Text('Are you sure you want to delete this model?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),

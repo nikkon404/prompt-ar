@@ -126,6 +126,34 @@ class _ARViewPageState extends State<ARViewPage> {
                       PlaneDetectionConfig.horizontalAndVertical,
                 ),
 
+                // "Scene empty" text when no models are placed
+                if (arState.placedModelIds.isEmpty)
+                  Positioned(
+                    top: 20,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'Scene empty',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
                 // Instruction text when model is ready
                 if (arState.generationState == GenerationState.arReady)
                   const ARInstructionText(),
@@ -142,14 +170,80 @@ class _ARViewPageState extends State<ARViewPage> {
                 if (arState.generationState == GenerationState.error)
                   ARErrorOverlay(errorMessage: arState.errorMessage),
 
-                // Prompt input at bottom (only show when idle or error)
-                if (arState.generationState == GenerationState.idle ||
-                    arState.generationState == GenerationState.error)
+                // Prompt input at bottom (always visible except when loading)
+                if (![
+                  GenerationState.generating,
+                  GenerationState.downloading,
+                  GenerationState.initial,
+                ].contains(arState.generationState))
                   const BottomWidget(),
+
+                // top right section with a clear scene button
+                const _ClearAllButton(),
               ],
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _ClearAllButton extends StatelessWidget {
+  const _ClearAllButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 16,
+      right: 16,
+      child: BlocBuilder<ARCubit, ARState>(
+        buildWhen: (previous, current) =>
+            //   build only when placedModelIds length changes from 0 to non-zero or vice versa
+            previous.placedModelIds.isEmpty &&
+                current.placedModelIds.isNotEmpty ||
+            previous.placedModelIds.isNotEmpty &&
+                current.placedModelIds.isEmpty,
+        builder: (context, state) {
+          if (state.placedModelIds.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return CircleAvatar(
+            child: IconButton(
+              icon: const Icon(Icons.clear_all),
+              tooltip: 'Clear Scene',
+              onPressed: () async {
+                final cubit = context.read<ARCubit>();
+                final state = cubit.state;
+                final confirmed = await showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog.adaptive(
+                    title: const Text('Clear Scene'),
+                    content: Text(
+                      'This will clear all ${state.placedModelIds.length} item(s) from the scene?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
+                        child: const Text('Clear'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true && context.mounted) {
+                  cubit.clearScene();
+                }
+              },
+            ),
+          );
+        },
       ),
     );
   }
