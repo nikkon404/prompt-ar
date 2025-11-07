@@ -4,7 +4,7 @@ import logging
 import asyncio
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import Response
 
 from schemas.models import PromptRequest, GenerationResponse
@@ -29,6 +29,24 @@ def get_hf_service():
             detail="HuggingFaceService not initialized. Check HF_TOKEN configuration.",
         )
     return hf_service
+
+
+def cleanup_model_file(glb_path: Path):
+    """Cleanup function to delete model file after download.
+
+    This runs as a background task after the response is sent to the client.
+
+    Args:
+        glb_path: Path to the GLB file to delete
+    """
+    try:
+        if glb_path.exists():
+            glb_path.unlink()
+            logger.info(f"✓ Deleted GLB file after download: {glb_path}")
+        else:
+            logger.warning(f"GLB file not found for deletion: {glb_path}")
+    except Exception as delete_error:
+        logger.warning(f"Failed to delete GLB file after download: {delete_error}")
 
 
 @router.post("/generate", response_model=GenerationResponse)
@@ -110,19 +128,21 @@ async def generate_model(request: PromptRequest):
 
 
 @router.get("/download/{model_id}")
-async def download_model(model_id: str):
+async def download_model(model_id: str, background_tasks: BackgroundTasks):
     """Download GLB model file with brightness normalization applied on download.
 
     This endpoint:
     1. Loads the GLB file
     2. Applies brightness normalization for AR visibility
     3. Returns the normalized GLB file as a single binary file
+    4. Deletes the file and clears memory after client downloads
 
     Benefits:
     - Single file download (faster, simpler)
     - Smaller size (no zip overhead)
     - Brightness normalization applied on-demand (always uses latest settings)
     - Works directly with AR plugins (NodeType.fileSystemAppFolderGLB)
+    - Automatic cleanup after download (saves storage space)
     """
     hf_service = get_hf_service()
 
@@ -148,8 +168,11 @@ async def download_model(model_id: str):
             f"Serving normalized GLB file: {glb_path} ({len(glb_content)} bytes)"
         )
 
-        # Return GLB file with proper headers
-        return Response(
+        # Schedule cleanup task to run after response is sent
+        background_tasks.add_task(cleanup_model_file, glb_path)
+
+        # Create response
+        response = Response(
             content=glb_content,
             media_type="model/gltf-binary",
             headers={
@@ -161,6 +184,11 @@ async def download_model(model_id: str):
                 "Cache-Control": "public, max-age=3600",
             },
         )
+
+        # Clear memory reference (will be garbage collected after response is sent)
+        del glb_content
+
+        return response
     except Exception as e:
         logger.error(f"Failed to prepare/serve GLB file: {e}")
         raise HTTPException(

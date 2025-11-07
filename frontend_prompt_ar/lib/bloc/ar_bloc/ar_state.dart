@@ -12,6 +12,7 @@ class ARState extends Equatable {
   final bool isModelPlaced; // Whether model has been placed in AR scene
   final GenerationMode generationMode;
   final bool isCameraEnabled; // Whether camera is currently enabled
+  final List<String>? downloadedModels; // List of downloaded model IDs
   const ARState({
     this.generationState = GenerationState.initial,
     this.modelResponse,
@@ -20,6 +21,7 @@ class ARState extends Equatable {
     this.isModelPlaced = false,
     this.generationMode = GenerationMode.basic,
     this.isCameraEnabled = true, // Camera is enabled by default
+    this.downloadedModels,
   });
 
   ARState copyWith({
@@ -31,6 +33,7 @@ class ARState extends Equatable {
     bool? isModelPlaced,
     GenerationMode? generationMode,
     bool? isCameraEnabled,
+    List<String>? downloadedModels,
   }) {
     return ARState(
       generationState: generationState ?? this.generationState,
@@ -41,6 +44,7 @@ class ARState extends Equatable {
       isModelPlaced: isModelPlaced ?? this.isModelPlaced,
       generationMode: generationMode ?? this.generationMode,
       isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
+      downloadedModels: downloadedModels ?? this.downloadedModels,
     );
   }
 
@@ -53,5 +57,6 @@ class ARState extends Equatable {
         isModelPlaced,
         generationMode,
         isCameraEnabled,
+        downloadedModels,
       ];
 }

@@ -158,6 +158,9 @@ class HuggingFaceService:
                         response = client.get(glb_file_path)
                         response.raise_for_status()
 
+                        # Ensure parent directory exists before saving
+                        glb_path.parent.mkdir(parents=True, exist_ok=True)
+
                         # Save to our storage
                         with open(glb_path, "wb") as f:
                             f.write(response.content)
@@ -177,6 +180,9 @@ class HuggingFaceService:
                         f"Generated GLB file not found: {glb_file_path}. "
                         f"TRELLIS may have failed to generate the model."
                     )
+
+                # Ensure parent directory exists before copying
+                glb_path.parent.mkdir(parents=True, exist_ok=True)
 
                 # Copy the generated GLB to our storage
                 shutil.copy(glb_file_path, glb_path)
@@ -296,6 +302,9 @@ class HuggingFaceService:
                         response = client.get(temp_file_path)
                         response.raise_for_status()
 
+                        # Ensure parent directory exists before saving
+                        glb_path.parent.mkdir(parents=True, exist_ok=True)
+
                         # Save to our storage
                         with open(glb_path, "wb") as f:
                             f.write(response.content)
@@ -315,6 +324,9 @@ class HuggingFaceService:
                         f"Generated GLB file not found: {temp_file_path}. "
                         f"Shap-E may have failed to generate the model."
                     )
+
+                # Ensure parent directory exists before copying
+                glb_path.parent.mkdir(parents=True, exist_ok=True)
 
                 # Note: Shap-E might return a .ply, but we save it as .glb
                 # as requested by the function signature.

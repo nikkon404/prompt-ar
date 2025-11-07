@@ -36,6 +36,8 @@ class PromptARApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
+          primary: Colors.deepPurple,
+          secondary: Colors.purple,
           brightness: Brightness.light,
         ),
         useMaterial3: true,
@@ -43,6 +45,8 @@ class PromptARApp extends StatelessWidget {
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
+          primary: Colors.deepPurple,
+          secondary: Colors.purple,
           brightness: Brightness.dark,
         ),
         useMaterial3: true,

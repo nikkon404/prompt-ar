@@ -12,7 +12,7 @@ import '../../models/generation_state.dart';
 import 'widgets/ar_loading_overlay.dart';
 import 'widgets/ar_error_overlay.dart';
 import 'widgets/ar_instruction_text.dart';
-import 'widgets/ar_prompt_input.dart';
+import 'widgets/bottom/bottom_widget.dart';
 
 class ARViewPage extends StatefulWidget {
   const ARViewPage({super.key});
@@ -33,7 +33,7 @@ class _ARViewPageState extends State<ARViewPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('PromptAR'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () async {
@@ -60,7 +60,6 @@ class _ARViewPageState extends State<ARViewPage> {
               ),
             );
             if (confirmed && context.mounted) {
-              context.read<ARCubit>().reset();
               Navigator.of(context).pop();
             }
           },
@@ -71,11 +70,10 @@ class _ARViewPageState extends State<ARViewPage> {
         child: BlocConsumer<ARCubit, ARState>(
           // show info dialof once  state is ready and previous state was not ready
           listenWhen: (previous, current) =>
-              previous.generationState == GenerationState.downloading &&
-              current.generationState == GenerationState.arReady,
+              (previous.generationState != GenerationState.arReady &&
+                  current.generationState == GenerationState.arReady),
 
           listener: (context, state) {
-            // show info dialof once  state is ready and previous state was not ready
             showDialog(
               context: context,
               builder: (context) => AlertDialog.adaptive(
@@ -147,7 +145,7 @@ class _ARViewPageState extends State<ARViewPage> {
                 // Prompt input at bottom (only show when idle or error)
                 if (arState.generationState == GenerationState.idle ||
                     arState.generationState == GenerationState.error)
-                  const ARPromptInput(),
+                  const BottomWidget(),
               ],
             );
           },

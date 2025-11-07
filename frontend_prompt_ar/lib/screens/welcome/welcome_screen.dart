@@ -157,9 +157,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.deepPurple.shade700,
-              Colors.purple.shade500,
-              Colors.indigo.shade600,
+              Theme.of(context).colorScheme.primary,
+              Theme.of(context).colorScheme.secondary,
+              Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
             ],
           ),
         ),
@@ -286,7 +286,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             onPressed: _checkCameraPermission,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
-                              foregroundColor: Colors.deepPurple.shade700,
+                              foregroundColor: Theme.of(context).colorScheme.primary,
                               elevation: 4,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
@@ -336,7 +336,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           onPressed: _navigateToARView,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            foregroundColor: Colors.deepPurple.shade700,
+                            foregroundColor: Theme.of(context).colorScheme.primary,
                             elevation: 4,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),

@@ -123,4 +123,71 @@ class ModelRepository {
       throw Exception('Error downloading model: ${e.toString()}');
     }
   }
+
+  /// Get list of all downloaded models from documents directory
+  /// Returns list of model IDs (filenames without .glb extension)
+  Future<List<String>> getDownloadedModels() async {
+    try {
+      final documentsDir = await getApplicationDocumentsDirectory();
+      final dir = Directory(documentsDir.path);
+
+      if (!await dir.exists()) {
+        return [];
+      }
+
+      final files = dir.listSync();
+      final modelFiles = files
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.glb'))
+          .map((file) {
+        // return filename and extension
+        final fileName = path.basename(file.path);
+        return fileName;
+      }).toList();
+
+      debugPrint(
+          'ModelRepository: Found ${modelFiles.length} downloaded models');
+      return modelFiles;
+    } catch (e) {
+      debugPrint('ModelRepository: Error getting downloaded models: $e');
+      return [];
+    }
+  }
+
+  /// Check if a model file exists locally
+  Future<bool> modelExists(String modelId) async {
+    try {
+      final documentsDir = await getApplicationDocumentsDirectory();
+      final fileName = '$modelId.glb';
+      final filePath = path.join(documentsDir.path, fileName);
+      final file = File(filePath);
+      return await file.exists();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Delete a model file from local storage
+  /// modelId can be either just the ID or the full filename (e.g., "modelId.glb")
+  Future<bool> deleteModel(String modelId) async {
+    try {
+      final documentsDir = await getApplicationDocumentsDirectory();
+      // Handle both formats: "modelId" or "modelId.glb"
+      final fileName = modelId.endsWith('.glb') ? modelId : '$modelId.glb';
+      final filePath = path.join(documentsDir.path, fileName);
+      final file = File(filePath);
+
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('ModelRepository: Deleted model file: $filePath');
+        return true;
+      } else {
+        debugPrint('ModelRepository: Model file not found: $filePath');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('ModelRepository: Error deleting model: $e');
+      return false;
+    }
+  }
 }

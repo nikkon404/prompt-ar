@@ -52,7 +52,7 @@ class ARErrorOverlay extends StatelessWidget {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: Colors.deepPurple,
+                  foregroundColor: Theme.of(context).colorScheme.primary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
                     vertical: 16,

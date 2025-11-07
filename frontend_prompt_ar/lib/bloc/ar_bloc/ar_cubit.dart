@@ -13,6 +13,7 @@ import 'package:ar_flutter_plugin_2/datatypes/hittest_result_types.dart';
 import 'package:ar_flutter_plugin_2/models/ar_hittest_result.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/generation_state.dart';
+import '../../models/model_response.dart';
 import '../../repositories/model_repository.dart';
 import '../../services/network_service.dart';
 import 'ar_state.dart';
@@ -170,9 +171,6 @@ class ARCubit extends Cubit<ARState> {
         localFilePath: localFilePath,
       );
 
-      // Small delay for UI feedback
-      await Future.delayed(const Duration(milliseconds: 500));
-
       // AR Ready state - model file is ready to display
       emit(state.copyWith(
         generationState: GenerationState.arReady,
@@ -225,5 +223,70 @@ class ARCubit extends Cubit<ARState> {
   // change selected mode
   void updateMode(GenerationMode mode) {
     emit(state.copyWith(generationMode: mode));
+  }
+
+  /// Fetch list of downloaded models from repository and update state
+  Future<void> fetchDownloadedModels() async {
+    try {
+      final models = await _repository.getDownloadedModels();
+      emit(state.copyWith(downloadedModels: models));
+    } catch (e) {
+      debugPrint('ARCubit: Error fetching downloaded models: $e');
+      emit(state.copyWith(downloadedModels: []));
+    }
+  }
+
+  /// Load an existing downloaded model
+  Future<void> loadExistingModel(String modelId) async {
+    try {
+      emit(state.copyWith(
+        generationState: GenerationState.initial,
+      ));
+      // Create a mock response for the existing model
+      final response = ModelResponse(
+        modelId: modelId,
+        downloadUrl: '', // Not needed for local models
+        prompt: 'Loaded from storage', // Could store prompt if available
+        status: 'completed',
+        message: 'Model loaded from local storage',
+        localFilePath: modelId,
+      );
+
+      // Small delay for UI feedback
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // AR Ready state - model file is ready to display
+      emit(state.copyWith(
+        generationState: GenerationState.arReady,
+        modelResponse: response,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        generationState: GenerationState.error,
+        errorMessage: e.toString(),
+      ));
+
+      // Auto reset after error
+      await Future.delayed(const Duration(seconds: 3));
+      reset();
+    }
+  }
+
+  /// Delete a downloaded model
+  Future<void> deleteModel(String modelId) async {
+    try {
+      final deleted = await _repository.deleteModel(modelId);
+      if (deleted) {
+        //  remove from state list and emit
+        final updatedModels =
+            state.downloadedModels?.where((m) => m != modelId).toList();
+        emit(state.copyWith(downloadedModels: updatedModels));
+        debugPrint('ARCubit: Model deleted: $modelId');
+      } else {
+        debugPrint('ARCubit: Failed to delete model: $modelId');
+      }
+    } catch (e) {
+      debugPrint('ARCubit: Error deleting model: $e');
+    }
   }
 }
