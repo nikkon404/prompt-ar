@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:prompt_ar/models/generation_mode.dart';
 import 'package:vector_math/vector_math_64.dart' as vector;
 import 'package:ar_flutter_plugin_2/managers/ar_session_manager.dart';
 import 'package:ar_flutter_plugin_2/managers/ar_object_manager.dart';
@@ -9,54 +10,48 @@ import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import 'package:ar_flutter_plugin_2/models/ar_anchor.dart';
 import 'package:ar_flutter_plugin_2/datatypes/node_types.dart';
 import 'package:ar_flutter_plugin_2/datatypes/hittest_result_types.dart';
+import 'package:ar_flutter_plugin_2/models/ar_hittest_result.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/generation_state.dart';
 import '../../repositories/model_repository.dart';
-import '../../services/download_service.dart';
 import '../../services/network_service.dart';
-import 'ar_event.dart';
 import 'ar_state.dart';
 
-/// BLoC for managing AR model generation
-class ARBloc extends Bloc<AREvent, ARState> {
+/// Cubit for managing AR model generation
+class ARCubit extends Cubit<ARState> {
   final ModelRepository _repository;
-  final DownloadService _downloadService;
-  final NetworkService _networkService;
   ARSessionManager? _arSessionManager;
   ARObjectManager? _arObjectManager;
   ARAnchorManager? _arAnchorManager;
   ARNode? _currentModelNode;
   ARPlaneAnchor? _currentAnchor;
 
-  ARBloc({
+  ARCubit({
     ModelRepository? repository,
-    DownloadService? downloadService,
     NetworkService? networkService,
   })  : _repository = repository ?? ModelRepository(),
-        _downloadService = downloadService ?? DownloadService(),
-        _networkService = networkService ?? NetworkService(),
-        super(const ARState(generationState: GenerationState.initial)) {
-    on<ARGenerate>(_onGenerate);
-    on<ARReset>(_onReset);
-    on<ARUpdatePrompt>(_onUpdatePrompt);
-    on<ARInitialize>(_onInitialize);
-    on<ARHandleTap>(_onHandleTap);
-  }
+        super(const ARState());
 
-  FutureOr<void> _onInitialize(ARInitialize event, Emitter<ARState> emit) {
-    _arSessionManager = event.sessionManager;
-    _arObjectManager = event.objectManager;
-    _arAnchorManager = event.anchorManager;
+  /// Initialize AR session with managers
+  Future<void> initialize({
+    required ARSessionManager sessionManager,
+    required ARObjectManager objectManager,
+    required ARAnchorManager anchorManager,
+  }) async {
+    _arSessionManager = sessionManager;
+    _arObjectManager = objectManager;
+    _arAnchorManager = anchorManager;
 
     // Initialize AR session
     _arSessionManager?.onInitialize(
-      showAnimatedGuide: false, // Hide instruction overlay
+      showAnimatedGuide: false,
       showFeaturePoints: false,
-      showPlanes: true,
+      showPlanes: false,
       customPlaneTexturePath: null,
       showWorldOrigin: false,
       handlePans: true,
       handleRotation: true,
+      handleTaps: true,
     );
 
     // Initialize object manager
@@ -72,8 +67,8 @@ class ARBloc extends Bloc<AREvent, ARState> {
         return;
       }
 
-      // Dispatch tap event to handle model placement
-      add(ARHandleTap(hitTestResults));
+      // Call handleTap method directly
+      handleTap(hitTestResults);
     };
 
     debugPrint('ARView: AR session initialized');
@@ -81,7 +76,8 @@ class ARBloc extends Bloc<AREvent, ARState> {
     emit(state.copyWith(generationState: GenerationState.idle));
   }
 
-  FutureOr<void> _onHandleTap(ARHandleTap event, Emitter<ARState> emit) async {
+  /// Handle tap event on AR plane
+  Future<void> handleTap(List<ARHitTestResult> hitTestResults) async {
     if (_arObjectManager == null || _arAnchorManager == null) {
       debugPrint('ARView: AR managers not initialized');
       return;
@@ -92,8 +88,6 @@ class ARBloc extends Bloc<AREvent, ARState> {
       debugPrint('ARView: No model file path available');
       return;
     }
-
-    final hitTestResults = event.hitTestResults;
     if (hitTestResults.isEmpty) return;
 
     // Find the first plane hit test result
@@ -128,7 +122,7 @@ class ARBloc extends Bloc<AREvent, ARState> {
         type: NodeType.fileSystemAppFolderGLB,
         uri: currentState.modelResponse!.localFilePath!, // e.g., "tiger.glb"
         scale: vector.Vector3(16, 16, 16),
-        position: vector.Vector3(0.0, 0.2, 0.0),
+        position: vector.Vector3(0.0, 0.0, 0.0),
       );
 
       debugPrint('🔍 Placing GLB model at anchor: ${newAnchor.name}');
@@ -148,54 +142,26 @@ class ARBloc extends Bloc<AREvent, ARState> {
     }
   }
 
-  /// Clear the current model from AR scene
-  void clearModel() {
-    if (_currentModelNode != null && _arObjectManager != null) {
-      _arObjectManager!.removeNode(_currentModelNode!);
-      _currentModelNode = null;
-    }
-    if (_currentAnchor != null && _arAnchorManager != null) {
-      _arAnchorManager!.removeAnchor(_currentAnchor!);
-      _currentAnchor = null;
-    }
-    debugPrint('ARView: Model cleared from scene');
-  }
-
-  /// Dispose AR resources
-  void disposeAR() {
-    clearModel();
-    _arSessionManager?.dispose();
-  }
-
-  Future<void> _onGenerate(
-    ARGenerate event,
-    Emitter<ARState> emit,
-  ) async {
-    if (event.prompt.trim().isEmpty) {
-      return;
-    }
-
+  /// Generate model from prompt
+  Future<void> generate(String prompt) async {
     try {
       // Processing state - generating model on backend
       emit(state.copyWith(
-        generationState: GenerationState.processing,
-        currentPrompt: event.prompt,
+        generationState: GenerationState.generating,
       ));
 
       // Generate model from backend
-      final response = await _repository.generateModel(event.prompt);
+      final response = await _repository.generateModel(
+        prompt: prompt,
+        mode: state.generationMode.name,
+      );
+      // Downloading state - downloading GLB model directly
       emit(state.copyWith(
         generationState: GenerationState.downloading,
         modelResponse: response,
       ));
 
-      // Downloading state - downloading GLB model directly
-      // Brightness normalization is already applied to GLB during generation
-      // Single file download (faster, simpler than GLTF zip)
-      final downloadUrl =
-          '${_networkService.baseUrl}/api/models/download/${response.modelId}';
-      final localFilePath = await _downloadService.downloadModel(
-        downloadUrl,
+      final localFilePath = await _repository.downloadModel(
         response.modelId,
       );
 
@@ -220,14 +186,31 @@ class ARBloc extends Bloc<AREvent, ARState> {
 
       // Auto reset after error
       await Future.delayed(const Duration(seconds: 3));
-      add(const ARReset());
+      reset();
     }
   }
 
-  Future<void> _onReset(
-    ARReset event,
-    Emitter<ARState> emit,
-  ) async {
+  /// Clear the current model from AR scene
+  void clearModel() {
+    if (_currentModelNode != null && _arObjectManager != null) {
+      _arObjectManager!.removeNode(_currentModelNode!);
+      _currentModelNode = null;
+    }
+    if (_currentAnchor != null && _arAnchorManager != null) {
+      _arAnchorManager!.removeAnchor(_currentAnchor!);
+      _currentAnchor = null;
+    }
+    debugPrint('ARView: Model cleared from scene');
+  }
+
+  /// Dispose AR resources
+  void disposeAR() {
+    clearModel();
+    _arSessionManager?.dispose();
+  }
+
+  /// Reset AR state to idle
+  Future<void> reset() async {
     // Clear model from AR scene when resetting
     clearModel();
 
@@ -239,10 +222,8 @@ class ARBloc extends Bloc<AREvent, ARState> {
     ));
   }
 
-  Future<void> _onUpdatePrompt(
-    ARUpdatePrompt event,
-    Emitter<ARState> emit,
-  ) async {
-    emit(state.copyWith(currentPrompt: event.prompt));
+  // change selected mode
+  void updateMode(GenerationMode mode) {
+    emit(state.copyWith(generationMode: mode));
   }
 }

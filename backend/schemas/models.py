@@ -4,11 +4,13 @@ from pydantic import BaseModel
 class PromptRequest(BaseModel):
     """Request schema for model generation."""
     prompt: str
+    mode: str  # "basic" for Shap-E, "advanced" for TRELLIS
 
     class Config:
         json_schema_extra = {
             "example": {
-                "prompt": "wooden chair"
+                "prompt": "wooden chair",
+                "mode": "basic"
             }
         }
 

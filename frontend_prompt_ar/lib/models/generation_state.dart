@@ -2,7 +2,7 @@
 enum GenerationState {
   initial,
   idle,
-  processing, // Backend is generating the model
+  generating, // Backend is generating the model
   downloading, // Downloading the model file
   arReady, // AR view is ready and showing the model
   error,

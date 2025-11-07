@@ -6,8 +6,7 @@ import 'package:ar_flutter_plugin_2/managers/ar_object_manager.dart';
 import 'package:ar_flutter_plugin_2/managers/ar_anchor_manager.dart';
 import 'package:ar_flutter_plugin_2/managers/ar_location_manager.dart';
 import 'package:ar_flutter_plugin_2/datatypes/config_planedetection.dart';
-import 'package:prompt_ar/bloc/ar_bloc/ar_event.dart';
-import '../../bloc/ar_bloc/ar_bloc.dart';
+import '../../bloc/ar_bloc/ar_cubit.dart';
 import '../../bloc/ar_bloc/ar_state.dart';
 import '../../models/generation_state.dart';
 import 'widgets/ar_loading_overlay.dart';
@@ -25,7 +24,7 @@ class ARViewPage extends StatefulWidget {
 class _ARViewPageState extends State<ARViewPage> {
   @override
   void dispose() {
-    context.read<ARBloc>().disposeAR();
+    context.read<ARCubit>().disposeAR();
     super.dispose();
   }
 
@@ -61,15 +60,15 @@ class _ARViewPageState extends State<ARViewPage> {
               ),
             );
             if (confirmed && context.mounted) {
-              context.read<ARBloc>().add(const ARReset());
+              context.read<ARCubit>().reset();
               Navigator.of(context).pop();
             }
           },
         ),
       ),
       body: BlocProvider(
-        create: (context) => ARBloc(),
-        child: BlocConsumer<ARBloc, ARState>(
+        create: (context) => ARCubit(),
+        child: BlocConsumer<ARCubit, ARState>(
           // show info dialof once  state is ready and previous state was not ready
           listenWhen: (previous, current) =>
               previous.generationState == GenerationState.downloading &&
@@ -119,13 +118,10 @@ class _ARViewPageState extends State<ARViewPage> {
                     ARAnchorManager anchorManager,
                     ARLocationManager locationManager,
                   ) {
-                    context.read<ARBloc>().add(
-                          ARInitialize(
-                            sessionManager: sessionManager,
-                            objectManager: objectManager,
-                            anchorManager: anchorManager,
-                            locationManager: locationManager,
-                          ),
+                    context.read<ARCubit>().initialize(
+                          sessionManager: sessionManager,
+                          objectManager: objectManager,
+                          anchorManager: anchorManager,
                         );
                   },
                   planeDetectionConfig:
@@ -138,7 +134,7 @@ class _ARViewPageState extends State<ARViewPage> {
 
                 // Loading overlay
                 if ([
-                  GenerationState.processing,
+                  GenerationState.generating,
                   GenerationState.downloading,
                   GenerationState.initial,
                 ].contains(arState.generationState))

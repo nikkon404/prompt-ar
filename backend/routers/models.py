@@ -2,6 +2,7 @@
 
 import logging
 import asyncio
+import uuid
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
@@ -32,43 +33,72 @@ def get_hf_service():
 
 @router.post("/generate", response_model=GenerationResponse)
 async def generate_model(request: PromptRequest):
-    """Generate a 3D model from a text prompt using Shap-E.
+    """Generate a 3D model from a text prompt.
 
-    Flow: Text → Shap-E → 3D model (GLB format)
+    Mode options:
+    - "basic": Uses Shap-E for 3D model generation
+    - "advanced": Uses TRELLIS for 3D model generation with textures
+
+    Args:
+        request: PromptRequest with prompt and mode ("basic" or "advanced")
+
+    Returns:
+        GenerationResponse with model_id and download_url
     """
     hf_service = get_hf_service()
 
+    # Validate mode parameter
+    mode = request.mode.lower() if request.mode else None
+    if not mode or mode not in ["basic", "advanced"]:
+        raise HTTPException(status_code=400, detail=f"Invalid mode: '{request.mode}'.")
+
     # Create model record
     model_id = storage_service.create_model_record(request.prompt)
-    # model_id = "mesh_horse_1762378891721_enhanced"
-    # model_id = "BoxTextured"
 
     logger.info(
-        f"Generating 3D model for prompt: '{request.prompt[:50]}...' (ID: {model_id})"
+        f"Generating 3D model for prompt: '{request.prompt[:50]}...' "
+        f"(ID: {model_id}, Mode: {mode})"
     )
 
     try:
-        # Generate 3D model directly from text prompt, passing model_id for filename
-        glb_path = await asyncio.to_thread(
-            hf_service.text_to_3d, request.prompt, model_id
-        )
+        # Generate 3D model based on mode
+        # Combine logic for Shap-E and TRELLIS generation
+        hf_clients = {
+            "basic": ("shap_e_client", hf_service.text_to_3d_shap_e, "Shap-E"),
+            "advanced": ("trellis_client", hf_service.text_to_3d, "TRELLIS"),
+        }
+
+        client_attr, gen_func, mode_name = hf_clients[mode]
+
+        if not getattr(hf_service, client_attr):
+            raise HTTPException(
+                status_code=503,
+                detail=f"{mode_name} client not initialized. {mode_name} features are not available.",
+            )
+
+        logger.info(f"Using {mode_name} ({mode} mode) for generation...")
+        glb_path = await asyncio.to_thread(gen_func, request.prompt, model_id)
+
         logger.info(f"3D model generated: {glb_path}")
 
-        # # # Update storage with model file
+        # Update storage with model file
         storage_service.set_model_file(model_id, glb_path, fmt="glb")
         storage_service.update_model_status(model_id, "completed")
 
-        logger.info(f"✓ 3D model generation completed for {model_id}")
+        logger.info(f"✓ 3D model generation completed for {model_id} (mode: {mode})")
 
         resp = GenerationResponse(
             status="success",
-            message="3D model generated successfully",
+            message=f"3D model generated successfully using {mode} mode",
             model_id=model_id,
             download_url=f"/api/models/download/{model_id}",
         )
         logger.info(f"Generation response: {resp}")
         return resp
 
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except RuntimeError as e:
         logger.error(f"Generation failed: {str(e)}")
         storage_service.update_model_status(model_id, "failed")

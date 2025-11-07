@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:prompt_ar/models/generation_mode.dart';
 import '../../models/generation_state.dart';
 import '../../models/model_response.dart';
 
@@ -9,13 +10,16 @@ class ARState extends Equatable {
   final String currentPrompt;
   final String? errorMessage;
   final bool isModelPlaced; // Whether model has been placed in AR scene
-
+  final GenerationMode generationMode;
+  final bool isCameraEnabled; // Whether camera is currently enabled
   const ARState({
-    this.generationState = GenerationState.idle,
+    this.generationState = GenerationState.initial,
     this.modelResponse,
     this.currentPrompt = '',
     this.errorMessage,
     this.isModelPlaced = false,
+    this.generationMode = GenerationMode.basic,
+    this.isCameraEnabled = true, // Camera is enabled by default
   });
 
   ARState copyWith({
@@ -25,13 +29,18 @@ class ARState extends Equatable {
     String? errorMessage,
     bool clearModelResponse = false,
     bool? isModelPlaced,
+    GenerationMode? generationMode,
+    bool? isCameraEnabled,
   }) {
     return ARState(
       generationState: generationState ?? this.generationState,
-      modelResponse: clearModelResponse ? null : (modelResponse ?? this.modelResponse),
+      modelResponse:
+          clearModelResponse ? null : (modelResponse ?? this.modelResponse),
       currentPrompt: currentPrompt ?? this.currentPrompt,
       errorMessage: errorMessage,
       isModelPlaced: isModelPlaced ?? this.isModelPlaced,
+      generationMode: generationMode ?? this.generationMode,
+      isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
     );
   }
 
@@ -42,6 +51,7 @@ class ARState extends Equatable {
         currentPrompt,
         errorMessage,
         isModelPlaced,
+        generationMode,
+        isCameraEnabled,
       ];
 }
-

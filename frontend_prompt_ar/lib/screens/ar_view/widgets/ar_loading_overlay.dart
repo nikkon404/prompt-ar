@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:prompt_ar/bloc/ar_bloc/ar_bloc.dart';
-import 'package:prompt_ar/bloc/ar_bloc/ar_state.dart';
+import '../../../bloc/ar_bloc/ar_cubit.dart';
+import '../../../bloc/ar_bloc/ar_state.dart';
 import '../../../models/generation_state.dart';
 
 /// Loading overlay widget for AR view
@@ -17,8 +17,8 @@ class ARLoadingOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     String message = "";
     switch (state) {
-      case GenerationState.processing:
-        message = 'Generating 3D model...\nThis may take 5-10 seconds';
+      case GenerationState.generating:
+        message = 'Generating 3D model...\nThis may take 15-20 seconds';
         break;
       case GenerationState.downloading:
         message = 'Downloading model...';
@@ -27,10 +27,10 @@ class ARLoadingOverlay extends StatelessWidget {
         message = 'Please wait...';
     }
 
-    return BlocBuilder<ARBloc, ARState>(
+    return BlocBuilder<ARCubit, ARState>(
       builder: (context, state) {
         return Container(
-          color: Colors.black.withOpacity(0.65),
+          color: Colors.black.withValues(alpha: 0.65),
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

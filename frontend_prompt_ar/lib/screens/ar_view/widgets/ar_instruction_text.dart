@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:prompt_ar/bloc/ar_bloc/ar_state.dart';
-import '../../../bloc/ar_bloc/ar_bloc.dart';
-import '../../../bloc/ar_bloc/ar_event.dart';
+import '../../../bloc/ar_bloc/ar_cubit.dart';
+import '../../../bloc/ar_bloc/ar_state.dart';
 
 /// Instruction text widget displayed when model is ready for placement
 class ARInstructionText extends StatelessWidget {
@@ -33,13 +32,13 @@ class ARInstructionText extends StatelessWidget {
     );
 
     if (shouldReset == true && context.mounted) {
-      context.read<ARBloc>().add(const ARReset());
+      context.read<ARCubit>().reset();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ARBloc, ARState>(
+    return BlocBuilder<ARCubit, ARState>(
       builder: (context, state) {
         return Positioned(
           bottom: 30,
@@ -48,7 +47,7 @@ class ARInstructionText extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.7),
+              color: Colors.black.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -75,7 +74,7 @@ class ARInstructionText extends StatelessWidget {
                   ),
                   tooltip: 'Clear model',
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
                     padding: const EdgeInsets.all(8),
                   ),
                 ),

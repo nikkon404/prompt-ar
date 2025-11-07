@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../bloc/ar_bloc/ar_bloc.dart';
-import '../../../bloc/ar_bloc/ar_event.dart';
+import '../../../bloc/ar_bloc/ar_cubit.dart';
 
 /// Error overlay widget for AR view
 class ARErrorOverlay extends StatelessWidget {
@@ -15,7 +14,7 @@ class ARErrorOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black.withOpacity(0.85),
+      color: Colors.black.withValues(alpha: 0.85),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -49,7 +48,7 @@ class ARErrorOverlay extends StatelessWidget {
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
-                  context.read<ARBloc>().add(const ARReset());
+                  context.read<ARCubit>().reset();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
