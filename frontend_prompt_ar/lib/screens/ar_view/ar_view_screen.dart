@@ -24,7 +24,9 @@ class ARViewPage extends StatefulWidget {
 class _ARViewPageState extends State<ARViewPage> {
   @override
   void dispose() {
-    context.read<ARCubit>().disposeAR();
+    if (context.mounted) {
+      context.read<ARCubit>().disposeAR();
+    }
     super.dispose();
   }
 
@@ -126,37 +128,7 @@ class _ARViewPageState extends State<ARViewPage> {
                       PlaneDetectionConfig.horizontalAndVertical,
                 ),
 
-                // "Scene empty" text when no models are placed
-                if (arState.placedModelIds.isEmpty)
-                  Positioned(
-                    top: 20,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'Scene empty',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                // Instruction text when model is ready
-                if (arState.generationState == GenerationState.arReady)
-                  const ARInstructionText(),
+                const ARInstructionText(),
 
                 // Loading overlay
                 if ([
@@ -164,7 +136,11 @@ class _ARViewPageState extends State<ARViewPage> {
                   GenerationState.downloading,
                   GenerationState.initial,
                 ].contains(arState.generationState))
-                  ARLoadingOverlay(state: arState.generationState),
+                  ARLoadingOverlay(
+                    state: arState.generationState,
+                    mode: arState.generationMode,
+                    prompt: arState.currentPrompt,
+                  ),
 
                 // Error overlay
                 if (arState.generationState == GenerationState.error)
@@ -194,9 +170,10 @@ class _ClearAllButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
     return Positioned(
-      top: 16,
-      right: 16,
+      top: size.height * 0.038,
+      right: size.width * 0.03,
       child: BlocBuilder<ARCubit, ARState>(
         buildWhen: (previous, current) =>
             //   build only when placedModelIds length changes from 0 to non-zero or vice versa

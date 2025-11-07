@@ -5,5 +5,9 @@ enum GenerationState {
   generating, // Backend is generating the model
   downloading, // Downloading the model file
   arReady, // AR view is ready and showing the model
-  error,
+  error;
+
+  // get is loading state
+  bool get isLoading =>
+      this == GenerationState.generating || this == GenerationState.downloading;
 }

@@ -9,17 +9,16 @@ class ARState extends Equatable {
   final ModelResponse? modelResponse;
   final String currentPrompt;
   final String? errorMessage;
-  final bool isModelPlaced; // Whether model has been placed in AR scene
   final GenerationMode generationMode;
   final bool isCameraEnabled; // Whether camera is currently enabled
   final List<String>? downloadedModels; // List of downloaded model IDs
-  final List<String> placedModelIds; // List of model IDs that are placed in the scene
+  final List<String>
+      placedModelIds; // List of model IDs that are placed in the scene
   const ARState({
     this.generationState = GenerationState.initial,
     this.modelResponse,
     this.currentPrompt = '',
     this.errorMessage,
-    this.isModelPlaced = false,
     this.generationMode = GenerationMode.basic,
     this.isCameraEnabled = true, // Camera is enabled by default
     this.downloadedModels,
@@ -32,7 +31,6 @@ class ARState extends Equatable {
     String? currentPrompt,
     String? errorMessage,
     bool clearModelResponse = false,
-    bool? isModelPlaced,
     GenerationMode? generationMode,
     bool? isCameraEnabled,
     List<String>? downloadedModels,
@@ -44,13 +42,15 @@ class ARState extends Equatable {
           clearModelResponse ? null : (modelResponse ?? this.modelResponse),
       currentPrompt: currentPrompt ?? this.currentPrompt,
       errorMessage: errorMessage,
-      isModelPlaced: isModelPlaced ?? this.isModelPlaced,
       generationMode: generationMode ?? this.generationMode,
       isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
       downloadedModels: downloadedModels ?? this.downloadedModels,
       placedModelIds: placedModelIds ?? this.placedModelIds,
     );
   }
+
+  //  getter for isModelPlaced check if placedModelIds is not empty
+  bool get isModelPlaced => placedModelIds.isNotEmpty;
 
   @override
   List<Object?> get props => [

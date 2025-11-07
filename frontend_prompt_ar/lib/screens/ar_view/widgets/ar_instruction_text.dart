@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:prompt_ar/models/generation_state.dart';
 import '../../../bloc/ar_bloc/ar_cubit.dart';
 import '../../../bloc/ar_bloc/ar_state.dart';
 
@@ -7,78 +8,43 @@ import '../../../bloc/ar_bloc/ar_state.dart';
 class ARInstructionText extends StatelessWidget {
   const ARInstructionText({super.key});
 
-  Future<void> _showResetDialog(BuildContext context) async {
-    final shouldReset = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog.adaptive(
-        title: const Text('Clear Model'),
-        content: const Text(
-          'Are you sure you want to clear the current model? This will reset the AR view.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: const Text('Clear'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldReset == true && context.mounted) {
-      context.read<ARCubit>().reset();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ARCubit, ARState>(
-      builder: (context, state) {
+      builder: (context, s) {
+        final state = s.generationState;
+
+        String text = "";
+
+        if (state == GenerationState.idle && !s.isModelPlaced) {
+          text = "Enter a prompt to generate a 3D model.";
+        } else if (state == GenerationState.arReady && !s.isModelPlaced) {
+          text = "Tap on the screen to place the model in AR.";
+        }
+
+        if (text.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final size = MediaQuery.of(context).size;
         return Positioned(
-          bottom: 30,
-          left: 20,
-          right: 20,
+          top: size.height * 0.014,
+          left: size.width * 0.16,
+          right: size.width * 0.16,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.7),
+              color: Colors.black.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Instruction text
-                const Expanded(
-                  child: Text(
-                    'Tap on a plane to place the model',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
+            child: Center(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
                 ),
-                const SizedBox(width: 12),
-                // Reset button
-                IconButton(
-                  onPressed: () => _showResetDialog(context),
-                  icon: const Icon(
-                    Icons.refresh,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                  tooltip: 'Clear model',
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    padding: const EdgeInsets.all(8),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         );

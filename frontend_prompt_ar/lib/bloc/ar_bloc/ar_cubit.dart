@@ -154,7 +154,6 @@ class ARCubit extends Cubit<ARState> {
         emit(state.copyWith(
           generationState: GenerationState.idle,
           placedModelIds: updatedPlacedModels,
-          isModelPlaced: true,
         ));
         debugPrint('✅ Model placed at anchor: ${newAnchor.name}');
         debugPrint('   Total models in scene: ${updatedPlacedModels.length}');
@@ -173,6 +172,7 @@ class ARCubit extends Cubit<ARState> {
       // Processing state - generating model on backend
       emit(state.copyWith(
         generationState: GenerationState.generating,
+        currentPrompt: prompt,
       ));
 
       // Generate model from backend
@@ -226,23 +226,13 @@ class ARCubit extends Cubit<ARState> {
       }
       _placedAnchors.clear();
     }
+    emit(state.copyWith(
+      placedModelIds: [],
+      currentPrompt: '',
+      modelResponse: null,
+      generationState: GenerationState.idle,
+    ));
     debugPrint('ARView: All models cleared from scene');
-  }
-
-  /// Clear a specific model from AR scene by ID
-  void clearModel(String modelId) {
-    if (_placedModelNodes.containsKey(modelId) && _arObjectManager != null) {
-      _arObjectManager!.removeNode(_placedModelNodes[modelId]!);
-      _placedModelNodes.remove(modelId);
-    }
-    if (_placedAnchors.containsKey(modelId) && _arAnchorManager != null) {
-      _arAnchorManager!.removeAnchor(_placedAnchors[modelId]!);
-      _placedAnchors.remove(modelId);
-    }
-    final updatedPlacedModels =
-        state.placedModelIds.where((id) => id != modelId).toList();
-    emit(state.copyWith(placedModelIds: updatedPlacedModels));
-    debugPrint('ARView: Model $modelId cleared from scene');
   }
 
   /// Dispose AR resources
@@ -257,7 +247,6 @@ class ARCubit extends Cubit<ARState> {
       generationState: GenerationState.idle,
       errorMessage: null,
       clearModelResponse: true,
-      isModelPlaced: false,
     ));
   }
 
@@ -266,7 +255,6 @@ class ARCubit extends Cubit<ARState> {
     clearAllModels();
     emit(state.copyWith(
       placedModelIds: [],
-      isModelPlaced: false,
     ));
   }
 
