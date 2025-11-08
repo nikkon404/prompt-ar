@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import uuid
+import time
 from pathlib import Path
 from gradio_client import Client
 from gradio_client import exceptions as gradio_exceptions
@@ -37,23 +38,81 @@ class HuggingFaceService:
         self.storage_path = Path(MODEL_STORAGE_PATH)
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
-        # Initialize TRELLIS client
-        try:
-            self.trellis_client = Client(
-                "dkatz2391/TRELLIS_TextTo3D_Try2", hf_token=HF_TOKEN
-            )
-            logger.info("✓ TRELLIS Gradio Client initialized")
-        except Exception as e:
-            logger.error(f"Failed to initialize TRELLIS Client: {e}")
-            raise RuntimeError(f"Failed to initialize TRELLIS Client: {e}")
+        # Initialize TRELLIS client (non-blocking - text-to-3D features will be unavailable if this fails)
+        # Hugging Face Spaces can be slow or sleeping (free tier), so we retry with backoff
+        self.trellis_client = self._initialize_client_with_retry(
+            "dkatz2391/TRELLIS_TextTo3D_Try2",
+            "TRELLIS",
+            max_retries=2,
+        )
 
-        # Initialize Shap-E client
-        try:
-            self.shap_e_client = Client("hysts/Shap-E", hf_token=HF_TOKEN)
-            logger.info("✓ Shap-E Gradio Client initialized")
-        except Exception as e:
-            logger.warning(f"Failed to initialize Shap-E Client: {e}")
-            logger.warning("Shap-E features will not be available")
+        # Initialize Shap-E client (non-blocking)
+        self.shap_e_client = self._initialize_client_with_retry(
+            "hysts/Shap-E",
+            "Shap-E",
+            max_retries=2,
+        )
+
+    def _initialize_client_with_retry(
+        self, space_id: str, service_name: str, max_retries: int = 2
+    ) -> Client | None:
+        """Initialize a Gradio Client with retry logic and exponential backoff.
+
+        Hugging Face Spaces on the free tier can be slow to respond or sleeping,
+        so we retry with increasing delays.
+
+        Args:
+            space_id: Hugging Face Space ID (e.g., "username/space-name")
+            service_name: Human-readable name for logging
+            max_retries: Maximum number of retry attempts
+
+        Returns:
+            Client instance if successful, None if all retries failed
+        """
+        for attempt in range(max_retries + 1):
+            try:
+                if attempt > 0:
+                    # Exponential backoff: 5s, 10s
+                    wait_time = 5 * (2 ** (attempt - 1))
+                    logger.info(
+                        f"Retrying {service_name} initialization (attempt {attempt + 1}/{max_retries + 1}) "
+                        f"after {wait_time}s delay..."
+                    )
+                    time.sleep(wait_time)
+
+                logger.info(
+                    f"Initializing {service_name} Client (attempt {attempt + 1}/{max_retries + 1})..."
+                )
+                client = Client(space_id, hf_token=HF_TOKEN)
+                logger.info(f"✓ {service_name} Gradio Client initialized successfully")
+                return client
+
+            except Exception as e:
+                error_msg = str(e).lower()
+                is_timeout = "timeout" in error_msg or "timed out" in error_msg
+
+                if attempt < max_retries:
+                    logger.warning(
+                        f"{service_name} initialization attempt {attempt + 1} failed: {e}. "
+                        f"Will retry..."
+                    )
+                else:
+                    # Final attempt failed
+                    if is_timeout:
+                        logger.warning(
+                            f"Failed to initialize {service_name} Client after {max_retries + 1} attempts: {e}. "
+                            f"This is likely because the Hugging Face Space is sleeping (free tier) or slow to respond. "
+                            f"{service_name} features will not be available. "
+                            f"The Space will wake up automatically when first used, but initialization may take longer."
+                        )
+                    else:
+                        logger.warning(
+                            f"Failed to initialize {service_name} Client after {max_retries + 1} attempts: {e}. "
+                            f"{service_name} features will not be available."
+                        )
+                    return None
+
+        return None
 
     # ============================================================================
     # Public API - Model Generation
