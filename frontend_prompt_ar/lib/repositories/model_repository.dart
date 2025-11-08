@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 
 import '../models/model_response.dart';
 import '../services/network_service.dart';
@@ -34,15 +35,15 @@ class ModelRepository {
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final modelResponse = ModelResponse.fromJson(json);
 
         // Store the prompt in the response for reference
         return ModelResponse(
-          modelId: modelResponse.modelId,
-          downloadUrl: _buildFullUrl(modelResponse.downloadUrl),
+          modelId: json['model_id'] as String,
+          downloadUrl: _buildFullUrl(json['download_url'] as String),
           prompt: prompt,
-          status: modelResponse.status,
-          message: modelResponse.message,
+          status: json['status'] as String,
+          message: json['message'] as String? ?? 'Model generated successfully',
+          locationType: ModelLocationType.documentsFolder,
         );
       } else {
         final errorBody = response.body;
@@ -126,9 +127,39 @@ class ModelRepository {
     }
   }
 
+  /// Get list of asset GLB files from assets folder
+  /// Reads dynamically from AssetManifest.json
+  Future<List<String>> getAssetModels() async {
+    try {
+      final assetModels = <String>[];
+
+      // Load AssetManifest.json which contains all asset paths
+      final manifestContent = await rootBundle.loadString('AssetManifest.json');
+      final Map<String, dynamic> manifestMap = jsonDecode(manifestContent);
+
+      // Filter for GLB files in the assets folder
+      for (final assetPath in manifestMap.keys) {
+        if (assetPath.startsWith('assets/') && assetPath.endsWith('.glb')) {
+          assetModels.add(assetPath);
+          debugPrint('ModelRepository: Found asset model: $assetPath');
+        }
+      }
+
+      // Sort alphabetically for consistency
+      assetModels.sort();
+
+      debugPrint('ModelRepository: Found ${assetModels.length} asset models');
+      return assetModels;
+    } catch (e) {
+      debugPrint('ModelRepository: Error getting asset models: $e');
+      return [];
+    }
+  }
+
   /// Get list of all downloaded models from documents directory
   /// Returns list of model IDs (filenames without .glb extension)
   /// Sorted by creation date descending (latest first)
+  /// Also checks and loads asset models in memory
   Future<List<String>> getDownloadedModels() async {
     try {
       final documentsDir = await getApplicationDocumentsDirectory();

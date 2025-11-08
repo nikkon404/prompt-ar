@@ -1,11 +1,12 @@
 /// Model response from the AI 3D generation API
 class ModelResponse {
   final String modelId;
-  final String downloadUrl;  // URL to download the model
+  final String downloadUrl; // URL to download the model
   final String prompt;
   final String status;
   final String message;
-  final String? localFilePath;  // Local file path after download
+  final String? localFilePath; // Local file path after download
+  final ModelLocationType locationType;
 
   ModelResponse({
     required this.modelId,
@@ -13,6 +14,7 @@ class ModelResponse {
     required this.prompt,
     required this.status,
     required this.message,
+    required this.locationType,
     this.localFilePath,
   });
 
@@ -23,6 +25,7 @@ class ModelResponse {
       prompt: json['prompt'] as String? ?? '',
       status: json['status'] as String,
       message: json['message'] as String? ?? 'Model generated successfully',
+      locationType: ModelLocationType.documentsFolder,
     );
   }
 
@@ -36,17 +39,12 @@ class ModelResponse {
       status: status,
       message: message,
       localFilePath: localFilePath ?? this.localFilePath,
+      locationType: locationType,
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'model_id': modelId,
-      'download_url': downloadUrl,
-      'prompt': prompt,
-      'status': status,
-      'message': message,
-    };
   }
 }
 
+enum ModelLocationType {
+  asset,
+  documentsFolder,
+}

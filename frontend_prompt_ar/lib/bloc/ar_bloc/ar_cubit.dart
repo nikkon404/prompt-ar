@@ -40,49 +40,78 @@ class ARCubit extends Cubit<ARState> {
     required ARObjectManager objectManager,
     required ARAnchorManager anchorManager,
   }) async {
-    _arSessionManager = sessionManager;
-    _arObjectManager = objectManager;
-    _arAnchorManager = anchorManager;
+    try {
+      _arSessionManager = sessionManager;
+      _arObjectManager = objectManager;
+      _arAnchorManager = anchorManager;
 
-    // Initialize AR session
-    _arSessionManager?.onInitialize(
-      showAnimatedGuide: false,
-      showFeaturePoints: false,
-      showPlanes: false,
-      customPlaneTexturePath: null,
-      showWorldOrigin: false,
-      handlePans: true,
-      handleRotation: true,
-      handleTaps: true,
-    );
-
-    // Initialize object manager
-    _arObjectManager?.onInitialize();
-
-    // Set tap handler for placing models (works when model is ready or when idle with modelResponse)
-    _arSessionManager?.onPlaneOrPointTap = (hitTestResults) {
-      final currentState = state;
-      // Allow placing if:
-      // 1. Model is ready (arReady state), OR
-      // 2. State is idle but we have a modelResponse (can place same model again)
-      final canPlace =
-          (currentState.generationState == GenerationState.arReady ||
-                  (currentState.generationState == GenerationState.idle &&
-                      currentState.modelResponse != null)) &&
-              currentState.modelResponse?.localFilePath != null;
-
-      if (!canPlace) {
-        debugPrint('ARView: Tap ignored - model not ready');
+      // Initialize AR session
+      try {
+        await _arSessionManager?.onInitialize(
+          showAnimatedGuide: false,
+          showFeaturePoints: false,
+          showPlanes: false,
+          customPlaneTexturePath: null,
+          showWorldOrigin: false,
+          handlePans: true,
+          handleRotation: true,
+          handleTaps: true,
+        );
+      } catch (e) {
+        debugPrint('ARView: Failed to initialize AR session: $e');
+        emit(state.copyWith(
+          generationState: GenerationState.error,
+          errorMessage:
+              'AR is not available on this device. ARCore requires a physical Android device and cannot run on emulators.',
+        ));
         return;
       }
 
-      // Call handleTap method directly
-      handleTap(hitTestResults);
-    };
+      // Initialize object manager
+      try {
+        await _arObjectManager?.onInitialize();
+      } catch (e) {
+        debugPrint('ARView: Failed to initialize AR object manager: $e');
+        emit(state.copyWith(
+          generationState: GenerationState.error,
+          errorMessage:
+              'AR is not available on this device. ARCore requires a physical Android device and cannot run on emulators.',
+        ));
+        return;
+      }
 
-    debugPrint('ARView: AR session initialized');
+      // Set tap handler for placing models (works when model is ready or when idle with modelResponse)
+      _arSessionManager?.onPlaneOrPointTap = (hitTestResults) {
+        final currentState = state;
+        // Allow placing if:
+        // 1. Model is ready (arReady state), OR
+        // 2. State is idle but we have a modelResponse (can place same model again)
+        final canPlace =
+            (currentState.generationState == GenerationState.arReady ||
+                    (currentState.generationState == GenerationState.idle &&
+                        currentState.modelResponse != null)) &&
+                currentState.modelResponse?.localFilePath != null;
 
-    emit(state.copyWith(generationState: GenerationState.idle));
+        if (!canPlace) {
+          debugPrint('ARView: Tap ignored - model not ready');
+          return;
+        }
+
+        // Call handleTap method directly
+        handleTap(hitTestResults);
+      };
+
+      debugPrint('ARView: AR session initialized');
+
+      emit(state.copyWith(generationState: GenerationState.idle));
+    } catch (e) {
+      debugPrint('ARView: Unexpected error during AR initialization: $e');
+      emit(state.copyWith(
+        generationState: GenerationState.error,
+        errorMessage:
+            'Failed to initialize AR: ${e.toString()}. ARCore requires a physical Android device and cannot run on emulators.',
+      ));
+    }
   }
 
   /// Handle tap event on AR plane
@@ -99,8 +128,15 @@ class ARCubit extends Cubit<ARState> {
     }
     if (hitTestResults.isEmpty) return;
 
+    final model = currentState.modelResponse;
+    if (model == null) {
+      debugPrint('ARView: No model available to place');
+      return;
+    }
     final baseModelId = currentState.modelResponse!.modelId;
     final modelFilePath = currentState.modelResponse!.localFilePath!;
+    final isDownloaded = currentState.modelResponse!.locationType ==
+        ModelLocationType.documentsFolder;
 
     // Generate unique ID for this placement (allows same model to be placed multiple times)
     final placementId =
@@ -124,11 +160,15 @@ class ARCubit extends Cubit<ARState> {
       // Store anchor for this model placement
       _placedAnchors[placementId] = newAnchor;
 
+      final size =
+          isDownloaded ? 30.0 : 0.6; // Larger size for downloaded models
       // Place GLB model at anchor
       final node = ARNode(
-        type: NodeType.fileSystemAppFolderGLB,
+        type: isDownloaded
+            ? NodeType.fileSystemAppFolderGLB
+            : NodeType.localGLTF2,
         uri: modelFilePath,
-        scale: vector.Vector3(16, 16, 16),
+        scale: vector.Vector3.all(size),
         position: vector.Vector3(0.0, 0.0, 0.0),
       );
 
@@ -259,19 +299,23 @@ class ARCubit extends Cubit<ARState> {
     emit(state.copyWith(generationMode: mode));
   }
 
-  /// Fetch list of downloaded models from repository and update state
+  /// Fetch list of downloaded models and asset models from repository and update state
   Future<void> fetchDownloadedModels() async {
     try {
       final models = await _repository.getDownloadedModels();
-      emit(state.copyWith(downloadedModels: models));
+      final assetModels = await _repository.getAssetModels();
+      emit(state.copyWith(
+        downloadedModels: models,
+        assetModels: assetModels,
+      ));
     } catch (e) {
       debugPrint('ARCubit: Error fetching downloaded models: $e');
-      emit(state.copyWith(downloadedModels: []));
+      emit(state.copyWith(downloadedModels: [], assetModels: []));
     }
   }
 
   /// Load an existing downloaded model
-  Future<void> loadExistingModel(String modelId) async {
+  Future<void> loadExistingModel(String modelId, ModelLocationType type) async {
     try {
       emit(state.copyWith(
         generationState: GenerationState.initial,
@@ -284,6 +328,7 @@ class ARCubit extends Cubit<ARState> {
         status: 'completed',
         message: 'Model loaded from local storage',
         localFilePath: modelId,
+        locationType: type,
       );
 
       // Small delay for UI feedback

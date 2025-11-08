@@ -72,14 +72,17 @@ class _ARViewPageState extends State<ARViewPage> {
         child: BlocConsumer<ARCubit, ARState>(
           // show info dialof once  state is ready and previous state was not ready
           listenWhen: (previous, current) =>
+              // true,
               (previous.generationState != GenerationState.arReady &&
                   current.generationState == GenerationState.arReady),
 
           listener: (context, state) {
             showDialog(
               context: context,
-              builder: (context) => AlertDialog.adaptive(
+              builder: (context) => AlertDialog(
+                backgroundColor: Colors.black26,
                 content: const Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // success icon
                     Icon(
@@ -89,7 +92,11 @@ class _ARViewPageState extends State<ARViewPage> {
                     ),
                     SizedBox(height: 10),
                     Text(
-                        'The 3D model has been loaded into the AR scene. Tap on a detected surface to place the model.'),
+                        'The 3D model has been loaded into the AR scene. Tap on a detected surface to place the model.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        )),
                     SizedBox(height: 16),
                     Icon(
                       Icons.touch_app_outlined,
@@ -100,9 +107,14 @@ class _ARViewPageState extends State<ARViewPage> {
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('OK'),
-                  ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text(
+                        'OK',
+                        style: TextStyle(color: Colors.white),
+                      )),
                 ],
               ),
             );

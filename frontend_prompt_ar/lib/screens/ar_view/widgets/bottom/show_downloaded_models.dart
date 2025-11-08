@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:prompt_ar/bloc/ar_bloc/ar_cubit.dart';
 import 'package:prompt_ar/bloc/ar_bloc/ar_state.dart';
+import 'package:prompt_ar/models/model_response.dart';
 import 'package:prompt_ar/screens/ar_view/widgets/show_snackbar.dart';
 
 class ShowDownloadedModels extends StatelessWidget {
@@ -26,7 +27,7 @@ class ShowDownloadedModels extends StatelessWidget {
           value: cubit,
           child: BlocBuilder<ARCubit, ARState>(
             builder: (context, state) {
-              if (state.downloadedModels == null) {
+              if (state.downloadedModels == null || state.assetModels == null) {
                 return const SizedBox(
                   height: 200,
                   child: Center(
@@ -34,48 +35,16 @@ class ShowDownloadedModels extends StatelessWidget {
                   ),
                 );
               }
-              final models = state.downloadedModels;
-
-              if (models!.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'No Downloaded Models',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'No downloaded models found.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Close'),
-                      ),
-                    ],
-                  ),
-                );
-              }
 
               return _LoadModelDialog(
-                models: models,
+                assetModels: state.assetModels ?? [],
+                downloadedModels: state.downloadedModels ?? [],
                 bloc: cubit,
-                onModelApply: (modelId) {
-                  cubit.loadExistingModel(modelId);
+                onModelApply: (modelId, type) {
+                  cubit.loadExistingModel(modelId, type);
                   showSnackbar(
                     context,
-                    'Applied model #${models.indexOf(modelId) + 1} in AR, Tap on screen to place it.',
+                    'Applied model in AR, Tap on screen to place it.',
                   );
                   Navigator.of(context).pop();
                 },
@@ -116,17 +85,39 @@ class ShowDownloadedModels extends StatelessWidget {
   }
 }
 
-/// Bottom sheet widget to show list of downloaded models
-class _LoadModelDialog extends StatelessWidget {
-  final List<String> models;
+/// Bottom sheet widget to show list of downloaded models with tabs
+class _LoadModelDialog extends StatefulWidget {
+  final List<String> assetModels;
+  final List<String> downloadedModels;
   final ARCubit bloc;
-  final Function(String) onModelApply;
+  final Function(String, ModelLocationType) onModelApply;
 
   const _LoadModelDialog({
-    required this.models,
+    required this.assetModels,
+    required this.downloadedModels,
     required this.bloc,
     required this.onModelApply,
   });
+
+  @override
+  State<_LoadModelDialog> createState() => _LoadModelDialogState();
+}
+
+class _LoadModelDialogState extends State<_LoadModelDialog>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   /// Show delete confirmation dialog
   void _showDeleteConfirmation(BuildContext context, String modelId) {
@@ -142,7 +133,7 @@ class _LoadModelDialog extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              bloc.deleteModel(modelId);
+              widget.bloc.deleteModel(modelId);
               Navigator.of(context).pop();
             },
             style: TextButton.styleFrom(
@@ -183,12 +174,12 @@ class _LoadModelDialog extends StatelessWidget {
               ),
             ),
           ),
-          // Title
+          // Title and close button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Previously Downloaded',
+                'Models',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -200,83 +191,109 @@ class _LoadModelDialog extends StatelessWidget {
               ),
             ],
           ),
-          // text saying tap any model to apply
-          const Text(
-            'Tap a model to apply it in AR',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
+          const SizedBox(height: 8),
+          // Tab bar
+          TabBar(
+            controller: _tabController,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            tabs: const [
+              Tab(text: 'Downloaded'),
+              Tab(text: 'Demo Models'),
+            ],
           ),
           const SizedBox(height: 16),
-          // Model list
-          Flexible(
-            child: models.isEmpty
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: Text(
-                        'No models found',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-                  )
-                : GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 3,
-                      crossAxisSpacing: 11,
-                      childAspectRatio: 2.5,
-                    ),
-                    shrinkWrap: true,
-                    itemCount: models.length,
-                    itemBuilder: (context, index) {
-                      final modelId = models[index];
-
-                      return _ModelCard(
-                        modelId: modelId,
-                        index: index,
-                        onApply: () => onModelApply(modelId),
-                        onDelete: () =>
-                            _showDeleteConfirmation(context, modelId),
-                      );
-                    },
-                  ),
+          // Tab bar view
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Downloaded tab
+                _buildModelList(
+                  models: widget.downloadedModels,
+                  type: ModelLocationType.documentsFolder,
+                ),
+                // Demo tab
+                _buildModelList(
+                  models: widget.assetModels,
+                  type: ModelLocationType.asset,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildModelList({
+    required List<String> models,
+    required ModelLocationType type,
+  }) {
+    final isDemo = type == ModelLocationType.asset;
+    if (models.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            isDemo ? 'No demo models available' : 'No downloaded models found',
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 3,
+        crossAxisSpacing: 11,
+        childAspectRatio: 2.5,
+      ),
+      shrinkWrap: true,
+      itemCount: models.length,
+      itemBuilder: (context, index) {
+        final modelId = models[index];
+
+        return ModelCard(
+          modelId: modelId,
+          index: index,
+          locationType: type,
+          onApply: () => widget.onModelApply(modelId, type),
+          onDelete:
+              isDemo ? null : () => _showDeleteConfirmation(context, modelId),
+        );
+      },
+    );
+  }
 }
 
 /// Elegant model card widget with apply and delete actions
-class _ModelCard extends StatefulWidget {
+class ModelCard extends StatelessWidget {
   final String modelId;
   final int index;
-  final VoidCallback onApply;
-  final VoidCallback onDelete;
+  final ModelLocationType locationType;
+  final Function onApply;
+  final VoidCallback? onDelete;
 
-  const _ModelCard({
+  const ModelCard({
+    super.key,
     required this.modelId,
     required this.index,
+    required this.locationType,
     required this.onApply,
-    required this.onDelete,
+    this.onDelete,
   });
 
-  @override
-  State<_ModelCard> createState() => _ModelCardState();
-}
-
-class _ModelCardState extends State<_ModelCard> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        widget.onApply();
+        onApply();
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
@@ -315,29 +332,36 @@ class _ModelCardState extends State<_ModelCard> {
               const SizedBox(width: 6),
               // Model info
               Expanded(
-                child: Text(
-                  'Model #${widget.index + 1}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      locationType == ModelLocationType.asset
+                          ? modelId.split('/').last.split('.').first
+                          : 'Model #${index + 1}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
-              // Action buttons
-              GestureDetector(
-                onTap: () {
-                  widget.onDelete();
-                },
-                child: const Icon(
-                  Icons.delete_outline,
-                  color: Colors.red,
-                  size: 20,
+              // Action buttons - only show delete for downloaded models
+              if (onDelete != null)
+                GestureDetector(
+                  onTap: onDelete,
+                  child: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                    size: 20,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
