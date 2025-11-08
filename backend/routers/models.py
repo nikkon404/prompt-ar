@@ -21,9 +21,58 @@ router = APIRouter(prefix="/api/models", tags=["Models"])
 storage_service = StorageService()
 
 
+def sanitize_error_message(error: Exception) -> str:
+    """Sanitize error messages for frontend - hide technical details.
+
+    Returns user-friendly error messages instead of exposing:
+    - GPU quota details
+    - Internal error messages
+    - Technical stack traces
+    """
+    error_str = str(error).lower()
+
+    # GPU quota errors
+    if "gpu quota" in error_str or "exceeded" in error_str:
+        return "The AI service is currently busy. Please try again in a few minutes."
+
+    # Timeout errors
+    if "timeout" in error_str or "timed out" in error_str:
+        return "The request took too long. Please try again with a simpler prompt."
+
+    # Space/service unavailable
+    if "space" in error_str and ("sleeping" in error_str or "unavailable" in error_str):
+        return "The AI service is temporarily unavailable. Please try again later."
+
+    # Queue/busy errors
+    if "queue" in error_str or "busy" in error_str:
+        return "The service is busy. Please try again in a moment."
+
+    # Network errors
+    if "network" in error_str or "connection" in error_str:
+        return "Network error occurred. Please check your connection and try again."
+
+    # Generic fallback for other errors
+    return "Model generation failed. Please try again or use a different prompt."
+
+
 def get_hf_service():
-    """Get HuggingFaceService instance from main."""
-    from main import hf_service
+    """Get HuggingFaceService instance from main module."""
+    import sys
+
+    # Try to get the main module - could be 'main' or '__main__' depending on how it was run
+    main_module = None
+    if "main" in sys.modules:
+        main_module = sys.modules["main"]
+    elif "__main__" in sys.modules:
+        # When running as script, check if it's our main.py
+        main_module = sys.modules["__main__"]
+
+    # Fallback: import main module
+    if not main_module:
+        import main as main_module
+
+    # Access hf_service dynamically from the module
+    hf_service = getattr(main_module, "hf_service", None)
 
     if not hf_service:
         raise HTTPException(
@@ -120,13 +169,19 @@ async def generate_model(request: PromptRequest):
         # Re-raise HTTP exceptions as-is
         raise
     except RuntimeError as e:
-        logger.error(f"Generation failed: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Generation failed: {error_msg}")
         storage_service.update_model_status(model_id, "failed")
-        raise HTTPException(status_code=503, detail=str(e))
+        # Return sanitized error message to frontend
+        user_friendly_msg = sanitize_error_message(e)
+        raise HTTPException(status_code=503, detail=user_friendly_msg)
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        error_msg = str(e)
+        logger.error(f"Unexpected error: {error_msg}", exc_info=True)
         storage_service.update_model_status(model_id, "failed")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        # Return sanitized error message to frontend
+        user_friendly_msg = sanitize_error_message(e)
+        raise HTTPException(status_code=500, detail=user_friendly_msg)
 
 
 @router.get("/download/{model_id}")
@@ -267,13 +322,19 @@ async def generate_model_from_image(image: UploadFile = File(...)):
         # Re-raise HTTP exceptions as-is
         raise
     except RuntimeError as e:
-        logger.error(f"Generation from image failed: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Generation from image failed: {error_msg}")
         storage_service.update_model_status(model_id, "failed")
-        raise HTTPException(status_code=503, detail=str(e))
+        # Return sanitized error message to frontend
+        user_friendly_msg = sanitize_error_message(e)
+        raise HTTPException(status_code=503, detail=user_friendly_msg)
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        error_msg = str(e)
+        logger.error(f"Unexpected error: {error_msg}", exc_info=True)
         storage_service.update_model_status(model_id, "failed")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        # Return sanitized error message to frontend
+        user_friendly_msg = sanitize_error_message(e)
+        raise HTTPException(status_code=500, detail=user_friendly_msg)
     finally:
         # Clean up temporary image file
         try:
@@ -353,13 +414,19 @@ async def generate_model_from_image2(image: UploadFile = File(...)):
         # Re-raise HTTP exceptions as-is
         raise
     except RuntimeError as e:
-        logger.error(f"Generation from image failed: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Generation from image failed: {error_msg}")
         storage_service.update_model_status(model_id, "failed")
-        raise HTTPException(status_code=503, detail=str(e))
+        # Return sanitized error message to frontend
+        user_friendly_msg = sanitize_error_message(e)
+        raise HTTPException(status_code=503, detail=user_friendly_msg)
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        error_msg = str(e)
+        logger.error(f"Unexpected error: {error_msg}", exc_info=True)
         storage_service.update_model_status(model_id, "failed")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        # Return sanitized error message to frontend
+        user_friendly_msg = sanitize_error_message(e)
+        raise HTTPException(status_code=500, detail=user_friendly_msg)
     finally:
         # Clean up temporary image file
         try:

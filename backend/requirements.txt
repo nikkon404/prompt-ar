@@ -1,11 +1,26 @@
+# Core web framework - using versions compatible with Python 3.12 and Android/ARM
+# FastAPI 0.104.1 works with Pydantic v1 (no Rust compilation needed)
 fastapi==0.104.1
-uvicorn==0.24.0
+uvicorn[standard]==0.24.0
 python-multipart==0.0.6
-requests==2.32.3
-httpx==0.28.1
+
+# HTTP clients
+requests==2.31.0
+httpx==0.25.2
+
+# Configuration
 python-dotenv==1.0.0
+
+# Hugging Face integration
 gradio_client==1.13.3
 huggingface_hub>=0.19.3
-Pillow==10.4.0
+
+# Image processing
+Pillow==10.2.0
+
+# 3D model processing
 pygltflib==1.16.0
+
+# Data validation - Pydantic v1 (no Rust compilation required, works on Android)
+pydantic==1.10.13
 

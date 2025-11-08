@@ -32,21 +32,23 @@ class ColoredFormatter(logging.Formatter):
     def format(self, record):
         # Get the color for this log level
         color = self.COLORS.get(record.levelname, self.RESET)
-        
+
         # Format the base message
         log_message = super().format(record)
-        
+
         # For ERROR and CRITICAL, color the entire message
         if record.levelname in ["ERROR", "CRITICAL"]:
             # Color the whole message, with bold levelname
-            levelname_colored = f"{self.BOLD}{color}{record.levelname}{self.RESET}{color}"
+            levelname_colored = (
+                f"{self.BOLD}{color}{record.levelname}{self.RESET}{color}"
+            )
             log_message = log_message.replace(record.levelname, levelname_colored)
             log_message = f"{color}{log_message}{self.RESET}"
         else:
             # For other levels, just color the levelname (bold)
             levelname_colored = f"{self.BOLD}{color}{record.levelname}{self.RESET}"
             log_message = log_message.replace(record.levelname, levelname_colored)
-        
+
         return log_message
 
 
@@ -56,20 +58,20 @@ def setup_colored_logging():
     # Create console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)
-    
+
     # Create formatter with colors
     formatter = ColoredFormatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     console_handler.setFormatter(formatter)
-    
+
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     root_logger.handlers = []  # Clear existing handlers
     root_logger.addHandler(console_handler)
-    
+
     # Suppress noisy loggers
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn").setLevel(logging.INFO)
@@ -104,20 +106,21 @@ app.include_router(models_router)
 async def startup_event():
     global hf_service
 
-    if HF_TOKEN:
+    # Initialize HuggingFaceService (works with or without HF_TOKEN)
+    try:
+        from services.huggingface_service import HuggingFaceService
 
-        # Initialize HuggingFaceService
-        try:
-            from services.huggingface_service import HuggingFaceService
+        logger.info("Initializing HuggingFaceService")
+        hf_service = HuggingFaceService()
+        logger.info("✓ HuggingFaceService initialized successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize HuggingFaceService: {e}")
+        hf_service = None
 
-            logger.info("Initializing HuggingFaceService")
-            hf_service = HuggingFaceService()
-            logger.info("✓ HuggingFaceService initialized successfully")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize HuggingFaceService: {e}")
-            hf_service = None
-    else:
-        logger.warning("⚠️  HF_TOKEN not configured - Some Spaces may require authentication")
+    if not HF_TOKEN:
+        logger.warning(
+            "⚠️  HF_TOKEN not configured - Some Spaces may require authentication"
+        )
 
     logger.info(
         f"API server started. Visit http://localhost:8000/docs for API documentation"
