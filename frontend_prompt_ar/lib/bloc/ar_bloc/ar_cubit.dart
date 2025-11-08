@@ -104,6 +104,13 @@ class ARCubit extends Cubit<ARState> {
       debugPrint('ARView: AR session initialized');
 
       emit(state.copyWith(generationState: GenerationState.idle));
+      final isRunning = await _repository.checkHealth();
+      if (!isRunning) {
+        emit(state.copyWith(
+            generationState: GenerationState.error,
+            errorMessage:
+                'Failed to connect with the server, can only render local 3d models'));
+      }
     } catch (e) {
       debugPrint('ARView: Unexpected error during AR initialization: $e');
       emit(state.copyWith(

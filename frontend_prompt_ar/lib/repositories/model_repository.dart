@@ -47,18 +47,20 @@ class ModelRepository {
         );
       } else {
         final errorBody = response.body;
+        debugPrint(errorBody);
         throw Exception(
             'Failed to generate model: ${response.statusCode} - $errorBody');
       }
     } on TimeoutException {
+      debugPrint("Timeout");
       throw Exception('Model generation timed out. Please try again.');
     } on NetworkException catch (e) {
+      debugPrint("Network Exception: ${e.statusCode}");
+      debugPrint(" ${e.message}");
       if (e.statusCode == 408) {
         throw Exception('Model generation timed out. Please try again.');
       }
       throw Exception('Network error has occurred. Please try again.');
-    } catch (e) {
-      throw Exception('Error generating model: ${e.toString()}');
     }
   }
 
@@ -225,6 +227,27 @@ class ModelRepository {
       }
     } catch (e) {
       debugPrint('ModelRepository: Error deleting model: $e');
+      return false;
+    }
+  }
+
+  //health check
+  Future<bool> checkHealth() async {
+    try {
+      final response = await _networkService.get(
+        _networkService.healthEndpoint,
+        timeout: const Duration(seconds: 4),
+      );
+      if (response.statusCode == 200) {
+        debugPrint('ModelRepository: Health check successful');
+      } else {
+        debugPrint(
+            'ModelRepository: Health check failed with status: ${response.statusCode}');
+        debugPrint(response.body);
+      }
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('ModelRepository: Health check failed: $e');
       return false;
     }
   }

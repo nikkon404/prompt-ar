@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
@@ -12,6 +13,7 @@ class NetworkService {
   late final String _modelsEndpoint;
   late final Duration _generationTimeout;
   late final Duration _downloadTimeout;
+  late final String _healthEndpoint;
 
   NetworkService({
     http.Client? client,
@@ -22,13 +24,16 @@ class NetworkService {
   /// Initialize configuration from environment variables
   void _initializeFromEnv() {
     _baseUrl = dotenv.env['BACKEND_BASE_URL'] ?? 'http://localhost:8000';
-    _generateEndpoint = dotenv.env['API_ENDPOINT_GENERATE'] ?? '/api/models/generate';
-    _downloadEndpoint = dotenv.env['API_ENDPOINT_DOWNLOAD'] ?? '/api/models/download';
-    _modelsEndpoint = dotenv.env['API_ENDPOINT_MODELS'] ?? '/api/models';
-    
-    final genTimeout = int.tryParse(dotenv.env['GENERATION_TIMEOUT'] ?? '600') ?? 600;
-    final dlTimeout = int.tryParse(dotenv.env['DOWNLOAD_TIMEOUT'] ?? '300') ?? 300;
-    
+    _generateEndpoint = '/api/models/generate';
+    _downloadEndpoint = '/api/models/download';
+    _modelsEndpoint = '/api/models';
+    _healthEndpoint = '/health';
+
+    final genTimeout =
+        int.tryParse(dotenv.env['GENERATION_TIMEOUT'] ?? '600') ?? 600;
+    final dlTimeout =
+        int.tryParse(dotenv.env['DOWNLOAD_TIMEOUT'] ?? '300') ?? 300;
+
     _generationTimeout = Duration(seconds: genTimeout);
     _downloadTimeout = Duration(seconds: dlTimeout);
   }
@@ -42,7 +47,8 @@ class NetworkService {
       return endpoint;
     }
     // Remove leading slash if present
-    final cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    final cleanEndpoint =
+        endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
     return '$_baseUrl/$cleanEndpoint';
   }
 
@@ -70,9 +76,7 @@ class NetworkService {
 
       return response;
     } catch (e) {
-      if (e is TimeoutException) {
-        throw NetworkException('Request timed out', 408);
-      }
+      debugPrint(e.toString());
       throw NetworkException('Network error: ${e.toString()}', 0);
     }
   }
@@ -95,9 +99,7 @@ class NetworkService {
 
       return response;
     } catch (e) {
-      if (e is TimeoutException) {
-        throw NetworkException('Request timed out', 408);
-      }
+      debugPrint(e.toString());
       throw NetworkException('Network error: ${e.toString()}', 0);
     }
   }
@@ -117,6 +119,9 @@ class NetworkService {
   /// Download timeout
   Duration get downloadTimeout => _downloadTimeout;
 
+  /// Health check endpoint
+  String get healthEndpoint => _healthEndpoint;
+
   /// Dispose resources
   void dispose() {
     _client.close();
@@ -133,4 +138,3 @@ class NetworkException implements Exception {
   @override
   String toString() => 'NetworkException: $message (Status: $statusCode)';
 }
-
