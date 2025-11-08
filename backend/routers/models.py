@@ -3,8 +3,10 @@
 import logging
 import asyncio
 import uuid
+import tempfile
+import shutil
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, File, UploadFile
 from fastapi.responses import Response
 
 from schemas.models import PromptRequest, GenerationResponse
@@ -194,3 +196,175 @@ async def download_model(model_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(
             status_code=500, detail=f"Failed to prepare/serve GLB file: {str(e)}"
         )
+
+
+@router.post("/generate-from-image", response_model=GenerationResponse)
+async def generate_model_from_image(image: UploadFile = File(...)):
+    """Generate a 3D model from an uploaded image using Hunyuan3D.
+
+    This endpoint:
+    1. Accepts an image file upload
+    2. Uses Hunyuan3D to convert the image to a 3D GLB model with textures and colors
+    3. Returns a model_id and download_url for the generated model
+
+    Args:
+        image: Uploaded image file (JPEG, PNG, etc.)
+
+    Returns:
+        GenerationResponse with model_id and download_url
+    """
+    hf_service = get_hf_service()
+
+    if not hf_service.hunyuan_client:
+        raise HTTPException(
+            status_code=503,
+            detail="Hunyuan3D-2 client not initialized. Hunyuan3D-2 is required for image-to-3D features.",
+        )
+
+    # Create model record with descriptive prompt
+    model_id = storage_service.create_model_record(f"image_to_3d_{image.filename}")
+
+    logger.info(f"Generating 3D model from image: {image.filename} (ID: {model_id})")
+
+    # Create temporary directory for uploaded image
+    temp_dir = Path(tempfile.gettempdir()) / "prompt_ar_uploads"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save uploaded image to temporary file
+    temp_image_path = temp_dir / f"{model_id}_{image.filename}"
+
+    try:
+        # Save uploaded file
+        with open(temp_image_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        logger.info(f"Saved uploaded image to: {temp_image_path}")
+
+        # Generate 3D model from image
+        logger.info("Using Hunyuan3D-2 for image-to-3D generation...")
+        glb_path = await asyncio.to_thread(
+            hf_service.image_to_3d_hunyuan, str(temp_image_path), model_id
+        )
+
+        logger.info(f"3D model generated: {glb_path}")
+
+        # Update storage with model file
+        storage_service.set_model_file(model_id, glb_path, fmt="glb")
+        storage_service.update_model_status(model_id, "completed")
+
+        logger.info(f"✓ 3D model generation from image completed for {model_id}")
+
+        resp = GenerationResponse(
+            status="success",
+            message="3D model generated successfully from image using Hunyuan3D-2",
+            model_id=model_id,
+            download_url=f"/api/models/download/{model_id}",
+        )
+        logger.info(f"Generation response: {resp}")
+        return resp
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except RuntimeError as e:
+        logger.error(f"Generation from image failed: {str(e)}")
+        storage_service.update_model_status(model_id, "failed")
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        storage_service.update_model_status(model_id, "failed")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        # Clean up temporary image file
+        try:
+            if temp_image_path.exists():
+                temp_image_path.unlink()
+                logger.debug(f"Cleaned up temporary image file: {temp_image_path}")
+        except Exception as cleanup_error:
+            logger.warning(f"Failed to cleanup temporary image file: {cleanup_error}")
+
+
+@router.post("/generate-from-image2", response_model=GenerationResponse)
+async def generate_model_from_image2(image: UploadFile = File(...)):
+    """Generate a 3D model from an uploaded image using TRELLIS.
+
+    This endpoint:
+    1. Accepts an image file upload
+    2. Uses TRELLIS 2 to convert the image to a 3D GLB model with textures and colors
+    3. Returns a model_id and download_url for the generated model
+
+    Args:
+        image: Uploaded image file (JPEG, PNG, etc.)
+
+    Returns:
+        GenerationResponse with model_id and download_url
+    """
+    hf_service = get_hf_service()
+
+    if not hf_service.trellis_client2:
+        raise HTTPException(
+            status_code=503,
+            detail="TRELLIS 2  client not initialized. TRELLIS 2 is required for image-to-3D features.",
+        )
+
+    # Create model record with descriptive prompt
+    model_id = storage_service.create_model_record(f"image_to_3d_{image.filename}")
+
+    logger.info(f"Generating 3D model from image: {image.filename} (ID: {model_id})")
+
+    # Create temporary directory for uploaded image
+    temp_dir = Path(tempfile.gettempdir()) / "prompt_ar_uploads"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save uploaded image to temporary file
+    temp_image_path = temp_dir / f"{model_id}_{image.filename}"
+
+    try:
+        # Save uploaded file
+        with open(temp_image_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+
+        logger.info(f"Saved uploaded image to: {temp_image_path}")
+
+        # Generate 3D model from image
+        logger.info("Using TRELLIS 2 for image-to-3D generation...")
+        glb_path = await asyncio.to_thread(
+            hf_service.image_to_3d_TRELLIS, str(temp_image_path), model_id
+        )
+
+        logger.info(f"3D model generated: {glb_path}")
+
+        # Update storage with model file
+        storage_service.set_model_file(model_id, glb_path, fmt="glb")
+        storage_service.update_model_status(model_id, "completed")
+
+        logger.info(f"✓ 3D model generation from image completed for {model_id}")
+
+        resp = GenerationResponse(
+            status="success",
+            message="3D model generated successfully from image using TRELLIS 2",
+            model_id=model_id,
+            download_url=f"/api/models/download/{model_id}",
+        )
+        logger.info(f"Generation response: {resp}")
+        return resp
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except RuntimeError as e:
+        logger.error(f"Generation from image failed: {str(e)}")
+        storage_service.update_model_status(model_id, "failed")
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        storage_service.update_model_status(model_id, "failed")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        # Clean up temporary image file
+        try:
+            if temp_image_path.exists():
+                temp_image_path.unlink()
+                logger.debug(f"Cleaned up temporary image file: {temp_image_path}")
+        except Exception as cleanup_error:
+            logger.warning(f"Failed to cleanup temporary image file: {cleanup_error}")

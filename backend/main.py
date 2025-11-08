@@ -117,7 +117,7 @@ async def startup_event():
             logger.error(f"❌ Failed to initialize HuggingFaceService: {e}")
             hf_service = None
     else:
-        logger.error("❌ HF_TOKEN not configured - Model generation will fail!")
+        logger.warning("⚠️  HF_TOKEN not configured - Some Spaces may require authentication")
 
     logger.info(
         f"API server started. Visit http://localhost:8000/docs for API documentation"
