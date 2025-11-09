@@ -22,8 +22,6 @@ PODS:
   - BlueCryptor (1.0.32)
   - BlueECC (1.2.5)
   - BlueRSA (1.0.200)
-  - camera_avfoundation (0.0.1):
-    - Flutter
   - Firebase/CoreOnly (11.15.0):
     - FirebaseCore (~> 11.15.0)
   - Firebase/RemoteConfig (11.15.0):
@@ -97,7 +95,6 @@ PODS:
 
 DEPENDENCIES:
   - ar_flutter_plugin_2 (from `.symlinks/plugins/ar_flutter_plugin_2/ios`)
-  - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - Flutter (from `Flutter`)
   - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
@@ -131,8 +128,6 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   ar_flutter_plugin_2:
     :path: ".symlinks/plugins/ar_flutter_plugin_2/ios"
-  camera_avfoundation:
-    :path: ".symlinks/plugins/camera_avfoundation/ios"
   Flutter:
     :path: Flutter
   geolocator_apple:
@@ -148,7 +143,6 @@ SPEC CHECKSUMS:
   BlueCryptor: b0aee3d9b8f367b49b30de11cda90e1735571c24
   BlueECC: 0d18e93347d3ec6d41416de21c1ffa4d4cd3c2cc
   BlueRSA: dfeef51db96bcc4edec654956c1581adbda4e6a3
-  camera_avfoundation: be3be85408cd4126f250386828e9b1dfa40ab436
   Firebase: d99ac19b909cd2c548339c2241ecd0d1599ab02e
   FirebaseABTesting: 5e9d432834aebf27ab72100d37af44dfbe8d82f7
   FirebaseCore: efb3893e5b94f32b86e331e3bd6dadf18b66568e

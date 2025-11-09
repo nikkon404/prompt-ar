@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../bloc/ar_bloc/ar_cubit.dart';
-import '../../../../bloc/ar_bloc/ar_state.dart';
-import '../../../../models/generation_mode.dart';
+import '../../../../../bloc/ar_bloc/ar_cubit.dart';
+import '../../../../../bloc/ar_bloc/ar_state.dart';
+import '../../../../../models/generation_mode.dart';
 
 class ModePicker extends StatelessWidget {
   const ModePicker({super.key});
@@ -111,4 +111,3 @@ class ModePicker extends StatelessWidget {
     );
   }
 }
-

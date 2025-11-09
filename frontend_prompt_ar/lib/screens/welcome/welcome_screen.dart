@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:camera/camera.dart';
 
 /// Welcome screen - landing page of the app
 class WelcomeScreen extends StatefulWidget {
@@ -28,28 +27,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       _permissionDenied = false;
       _isPermanentlyDenied = false;
     });
-
-    try {
-      // Use camera package to check permission - this is more reliable
-      // If we can get available cameras, permission is granted
-      debugPrint('WelcomeScreen: Checking camera access via camera package');
-      final cameras = await availableCameras();
-      debugPrint('WelcomeScreen: Found ${cameras.length} cameras');
-
-      if (cameras.isNotEmpty) {
-        // Camera access works - permission is granted
-        setState(() {
-          _hasPermission = true;
-          _isCheckingPermission = false;
-          _permissionDenied = false;
-          _isPermanentlyDenied = false;
-        });
-        return;
-      }
-    } catch (e) {
-      debugPrint('WelcomeScreen: Camera access error: $e');
-      // Camera access failed - need to request permission
-    }
 
     // If camera package check failed, use permission_handler as fallback
     final status = await Permission.camera.status;
@@ -81,27 +58,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       final result = await Permission.camera.request();
       debugPrint('WelcomeScreen: Permission request result: $result');
 
-      // After requesting, ALWAYS verify with camera package
-      // permission_handler can be unreliable on iOS
-      try {
-        final cameras = await availableCameras();
-        debugPrint(
-            'WelcomeScreen: After request - found ${cameras.length} cameras');
-        if (cameras.isNotEmpty) {
-          // Camera package confirms access - permission is actually granted
-          setState(() {
-            _hasPermission = true;
-            _isCheckingPermission = false;
-            _permissionDenied = false;
-            _isPermanentlyDenied = false;
-          });
-          return;
-        }
-      } catch (e) {
-        debugPrint(
-            'WelcomeScreen: Camera still not accessible after request: $e');
-      }
-
       // If camera package check failed, but permission_handler says granted, trust it
       if (result.isGranted || result.isLimited) {
         setState(() {
@@ -113,9 +69,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         return;
       }
 
-      // If permission_handler says permanentlyDenied but we haven't verified,
-      // it might be a false positive - show the grant button anyway
-      // (on iOS, permanentlyDenied usually only happens after multiple denials)
       setState(() {
         _hasPermission = false;
         _permissionDenied = true;
