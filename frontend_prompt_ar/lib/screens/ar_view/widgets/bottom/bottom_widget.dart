@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:prompt_ar/screens/ar_view/widgets/bottom/add_button.dart';
 import '../../../../bloc/ar_bloc/ar_cubit.dart';
 import '../../../../bloc/ar_bloc/ar_state.dart';
 import 'model_loader.dart';
 import 'mode_selector_menu.dart';
-import 'plus_button_menu.dart';
+import 'cancel_button.dart';
 import 'text_input/text_input_section.dart';
 
 /// Floating prompt input widget for AR view
@@ -133,7 +134,7 @@ class _BottomWidgetState extends State<BottomWidget> {
 
         // Show + button when idle
         if (bottomState.isCreate) {
-          return PlusButton(onTap: _showOptions);
+          return AddButton(onTap: _showOptions);
         }
 
         if (bottomState.isselectOption) {

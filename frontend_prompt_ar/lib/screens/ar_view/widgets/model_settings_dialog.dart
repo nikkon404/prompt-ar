@@ -118,10 +118,30 @@ class _ModelSettingsDialogState extends State<ModelSettingsDialog> {
 
               const SizedBox(height: 16),
 
-              // Close button
+              // Action buttons
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Remove button
+                  ElevatedButton(
+                    onPressed: () async {
+                      final cubit = context.read<ARCubit>();
+                      await cubit.removeNode(widget.tappedNode.name);
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 10,
+                      ),
+                    ),
+                    child: const Text('Remove'),
+                  ),
+                  // Close button
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: ElevatedButton.styleFrom(

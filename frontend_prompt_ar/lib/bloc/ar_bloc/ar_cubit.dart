@@ -424,4 +424,58 @@ class ARCubit extends Cubit<ARState> {
     }
     return;
   }
+
+  /// Remove a node from AR scene and state
+  Future<void> removeNode(String nodeName) async {
+    final node = _placedModelNodes[nodeName];
+    if (node == null) {
+      debugPrint('ARCubit: Node not found: $nodeName');
+      return;
+    }
+
+    // Find the anchor associated with this node
+    String? placementId;
+    ARPlaneAnchor? anchor;
+
+    for (final entry in _placedAnchors.entries) {
+      // Check if this anchor's childNodes contains the node name
+      // The anchor's childNodes is populated when addNode is called with planeAnchor
+      if (entry.value.childNodes.contains(nodeName)) {
+        placementId = entry.key;
+        anchor = entry.value;
+        break;
+      }
+    }
+
+    // Remove node from AR scene
+    if (_arObjectManager != null) {
+      await _arObjectManager!.removeNode(node);
+      debugPrint('ARCubit: Removed node from AR scene: $nodeName');
+    }
+
+    // Remove anchor from AR scene if found
+    if (anchor != null && _arAnchorManager != null) {
+      await _arAnchorManager!.removeAnchor(anchor);
+      debugPrint('ARCubit: Removed anchor: ${anchor.name}');
+    }
+
+    // Remove from internal maps
+    _placedModelNodes.remove(nodeName);
+    if (placementId != null) {
+      _placedAnchors.remove(placementId);
+    }
+
+    // Remove from state
+    if (placementId != null) {
+      final updatedPlacedModels =
+          state.placedModelIds.where((id) => id != placementId).toList();
+      emit(state.copyWith(placedModelIds: updatedPlacedModels));
+      debugPrint('ARCubit: Removed placement ID from state: $placementId');
+    }
+
+    // Clear selected node if it was the one being removed
+    if (state.tappedNode?.name == nodeName) {
+      emit(state.copyWith(clearTappedNode: true));
+    }
+  }
 }

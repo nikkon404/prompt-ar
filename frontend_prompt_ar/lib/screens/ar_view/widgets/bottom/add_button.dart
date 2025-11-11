@@ -1,38 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Cancel button positioned outside the container
-class CancelButton extends StatelessWidget {
-  const CancelButton({
-    super.key,
-    required this.onTap,
-  });
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.7),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          Icons.arrow_back,
-          color: Colors.white.withValues(alpha: 0.8),
-          size: 32,
-        ),
-      ),
-    );
-  }
-}
-
 /// Plus button for creating new models with animated glowing border
-class PlusButton extends StatefulWidget {
-  const PlusButton({
+class AddButton extends StatefulWidget {
+  const AddButton({
     super.key,
     required this.onTap,
   });
@@ -40,10 +10,10 @@ class PlusButton extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<PlusButton> createState() => _PlusButtonState();
+  State<AddButton> createState() => _AddButtonState();
 }
 
-class _PlusButtonState extends State<PlusButton>
+class _AddButtonState extends State<AddButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _glowAnimation;
@@ -52,14 +22,16 @@ class _PlusButtonState extends State<PlusButton>
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..repeat(reverse: true);
 
+    // Custom curve for fast edge transitions - creates magical snap effect
     _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: Curves.easeInOut,
+        curve:
+            Curves.easeInOutCubic, // Faster acceleration/deceleration at edges
       ),
     );
   }
@@ -86,9 +58,9 @@ class _PlusButtonState extends State<PlusButton>
               animation: _animationController,
               builder: (context, child) {
                 return Container(
-                  width: 72,
-                  height: 72,
-                  margin: const EdgeInsets.only(bottom: 20),
+                  width: 50,
+                  height: 50,
+                  margin: const EdgeInsets.only(bottom: 15),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
@@ -99,57 +71,57 @@ class _PlusButtonState extends State<PlusButton>
                         primaryColor.withValues(alpha: 0.8),
                       ],
                     ),
-                    // Animated glowing border
+                    // Animated glowing border - faster edge transitions
                     border: Border.all(
                       color: primaryColor.withValues(
-                        alpha: 0.9 + (_glowAnimation.value * 0.1),
+                        alpha: 0.85 + (_glowAnimation.value * 0.15),
                       ),
-                      width: 3 + (_glowAnimation.value * 2.5),
+                      width: 2.5 + (_glowAnimation.value * 3.0),
                     ),
                     boxShadow: [
-                      // Primary outer glow - most intense
+                      // Primary outer glow - most intense with dramatic edge transitions
                       BoxShadow(
                         color: primaryColor.withValues(
-                          alpha: 0.8 + (_glowAnimation.value * 0.2),
+                          alpha: 0.75 + (_glowAnimation.value * 0.25),
                         ),
-                        blurRadius: 35 + (_glowAnimation.value * 30),
-                        spreadRadius: 5 + (_glowAnimation.value * 8),
+                        blurRadius: 30 + (_glowAnimation.value * 40),
+                        spreadRadius: 4 + (_glowAnimation.value * 10),
                         offset: const Offset(0, 8),
                       ),
-                      // Secondary outer glow - wider spread
+                      // Secondary outer glow - wider spread with faster edges
                       BoxShadow(
                         color: primaryColor.withValues(
-                          alpha: 0.6 + (_glowAnimation.value * 0.3),
+                          alpha: 0.5 + (_glowAnimation.value * 0.4),
                         ),
-                        blurRadius: 50 + (_glowAnimation.value * 25),
-                        spreadRadius: 3 + (_glowAnimation.value * 6),
+                        blurRadius: 45 + (_glowAnimation.value * 35),
+                        spreadRadius: 2 + (_glowAnimation.value * 8),
                         offset: const Offset(0, 8),
                       ),
-                      // Inner glow - bright and close
+                      // Inner glow - bright and close with snap effect
                       BoxShadow(
                         color: primaryColor.withValues(
-                          alpha: 0.7 + (_glowAnimation.value * 0.3),
+                          alpha: 0.65 + (_glowAnimation.value * 0.35),
                         ),
-                        blurRadius: 18 + (_glowAnimation.value * 15),
+                        blurRadius: 15 + (_glowAnimation.value * 20),
                         spreadRadius: -1,
                         offset: const Offset(0, 4),
                       ),
-                      // Magical white sparkle - elegant highlight
+                      // Magical white sparkle - elegant highlight with fast edges
                       BoxShadow(
                         color: Colors.white.withValues(
-                          alpha: 0.6 + (_glowAnimation.value * 0.4),
+                          alpha: 0.5 + (_glowAnimation.value * 0.5),
                         ),
-                        blurRadius: 10 + (_glowAnimation.value * 12),
-                        spreadRadius: 2 + (_glowAnimation.value * 4),
+                        blurRadius: 8 + (_glowAnimation.value * 16),
+                        spreadRadius: 1 + (_glowAnimation.value * 5),
                         offset: const Offset(0, 0),
                       ),
-                      // Additional purple/primary glow layer
+                      // Additional purple/primary glow layer - magical pulse
                       BoxShadow(
                         color: primaryColor.withValues(
-                          alpha: 0.5 + (_glowAnimation.value * 0.3),
+                          alpha: 0.4 + (_glowAnimation.value * 0.4),
                         ),
-                        blurRadius: 30 + (_glowAnimation.value * 20),
-                        spreadRadius: 4 + (_glowAnimation.value * 7),
+                        blurRadius: 25 + (_glowAnimation.value * 30),
+                        spreadRadius: 3 + (_glowAnimation.value * 9),
                         offset: const Offset(0, 6),
                       ),
                     ],
@@ -157,7 +129,7 @@ class _PlusButtonState extends State<PlusButton>
                   child: const Icon(
                     Icons.add,
                     color: Colors.white,
-                    size: 36,
+                    size: 22,
                   ),
                 );
               },
