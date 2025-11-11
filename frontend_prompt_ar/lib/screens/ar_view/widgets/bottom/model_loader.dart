@@ -10,6 +10,7 @@ class _ModelCard extends StatelessWidget {
     required this.locationType,
     required this.onApply,
     this.onDelete,
+    this.formattedTimestamp,
   });
 
   final ModelResponse model;
@@ -17,6 +18,7 @@ class _ModelCard extends StatelessWidget {
   final ModelLocationType locationType;
   final VoidCallback onApply;
   final VoidCallback? onDelete;
+  final String? formattedTimestamp;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +42,7 @@ class _ModelCard extends StatelessWidget {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
               // Model icon
@@ -56,7 +58,7 @@ class _ModelCard extends StatelessWidget {
                   size: 22,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               // Model info
               Expanded(
                 child: Column(
@@ -79,6 +81,19 @@ class _ModelCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    // Show timestamp for downloaded models
+                    if (locationType == ModelLocationType.documentsFolder &&
+                        formattedTimestamp != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          formattedTimestamp!,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -166,7 +181,7 @@ class _LoadModelDialogState extends State<LoadModelDialog>
   Widget build(BuildContext context) {
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.8,
+        maxHeight: MediaQuery.of(context).size.height * 0.6,
       ),
       padding: const EdgeInsets.only(
         top: 20,
@@ -219,7 +234,7 @@ class _LoadModelDialogState extends State<LoadModelDialog>
             indicatorColor: Colors.white,
             tabs: const [
               Tab(text: 'Downloaded'),
-              Tab(text: 'Demo Models'),
+              Tab(text: 'Example Models'),
             ],
           ),
           const SizedBox(height: 16),
@@ -248,12 +263,12 @@ class _LoadModelDialogState extends State<LoadModelDialog>
     required List<String> models,
   }) {
     if (models.isEmpty) {
-      return Center(
+      return const Center(
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
+          padding: EdgeInsets.all(32.0),
           child: Text(
             'No demo models available',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               color: Colors.grey,
             ),
@@ -262,13 +277,7 @@ class _LoadModelDialogState extends State<LoadModelDialog>
       );
     }
 
-    return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 3,
-        crossAxisSpacing: 11,
-        childAspectRatio: 2.5,
-      ),
+    return ListView.builder(
       shrinkWrap: true,
       itemCount: models.length,
       itemBuilder: (context, index) {
@@ -313,17 +322,13 @@ class _LoadModelDialogState extends State<LoadModelDialog>
       );
     }
 
-    return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 3,
-        crossAxisSpacing: 11,
-        childAspectRatio: 2.5,
-      ),
+    return ListView.builder(
       shrinkWrap: true,
       itemCount: models.length,
       itemBuilder: (context, index) {
         final model = models[index];
+        final formattedTimestamp =
+            model.timestamp != null ? _formatTimestamp(model.timestamp!) : null;
 
         return _ModelCard(
           model: model,
@@ -331,8 +336,37 @@ class _LoadModelDialogState extends State<LoadModelDialog>
           locationType: ModelLocationType.documentsFolder,
           onApply: () => widget.onModelApply(model),
           onDelete: () => _showDeleteConfirmation(context, model),
+          formattedTimestamp: formattedTimestamp,
         );
       },
     );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inDays == 0) {
+      if (difference.inHours == 0) {
+        if (difference.inMinutes == 0) {
+          return 'Just now';
+        }
+        return '${difference.inMinutes}m ago';
+      }
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inDays < 30) {
+      final weeks = (difference.inDays / 7).floor();
+      return '${weeks}w ago';
+    } else if (difference.inDays < 365) {
+      final months = (difference.inDays / 30).floor();
+      return '${months}mo ago';
+    } else {
+      final years = (difference.inDays / 365).floor();
+      return '${years}y ago';
+    }
   }
 }
