@@ -7,6 +7,7 @@ class ModelResponse {
   final String message;
   final String? localFilePath; // Local file path after download
   final ModelLocationType locationType;
+  final DateTime? timestamp;
 
   ModelResponse({
     required this.modelId,
@@ -16,6 +17,7 @@ class ModelResponse {
     required this.message,
     required this.locationType,
     this.localFilePath,
+    this.timestamp,
   });
 
   factory ModelResponse.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,9 @@ class ModelResponse {
       status: json['status'] as String,
       message: json['message'] as String? ?? 'Model generated successfully',
       locationType: ModelLocationType.documentsFolder,
+      timestamp: json['timestamp'] != null
+          ? DateTime.fromMicrosecondsSinceEpoch(json['timestamp'])
+          : null,
     );
   }
 

@@ -74,21 +74,25 @@ class ModelRepository {
   }
 
   /// Download a GLB model file from URL and save it to documents directory
+  /// Creates folder structure: documentsDir/modelId/
+  /// Saves model as: modelId/model.glb
+  /// Creates info.json with modelId, prompt, and timestamp
   /// Returns the relative path for use with NodeType.fileSystemAppFolderGLB
-  /// Path format: "modelId.glb" (relative to documents folder)
+  /// Path format: "modelId/model.glb" (relative to documents folder)
   /// Uses Documents directory instead of Caches for better ARKit access on iOS
-  Future<String> downloadModel(String modelId) async {
+  Future<String> downloadModel(String modelId, String prompt) async {
     try {
       debugPrint(
           'DownloadService: Starting GLB download for modelId: $modelId');
       // Use application documents directory - ARKit has better access to this on iOS
       final documentsDir = await getApplicationDocumentsDirectory();
 
-      // Use GLB extension - AR plugins handle GLB on all platforms
-      final fileName = '$modelId.glb';
-      final filePath = path.join(documentsDir.path, fileName);
-
-      debugPrint('DownloadService: Downloading GLB model to $filePath');
+      // Create folder structure: documentsDir/modelId/
+      final modelFolder = Directory(path.join(documentsDir.path, modelId));
+      if (!await modelFolder.exists()) {
+        await modelFolder.create(recursive: true);
+        debugPrint('DownloadService: Created folder: ${modelFolder.path}');
+      }
 
       // Download the file using network service
       final response = await _networkService.get(
@@ -96,13 +100,14 @@ class ModelRepository {
       );
 
       if (response.statusCode == 200) {
-        // Save the file
-        final file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes);
+        // Save the model file as model.glb inside the modelId folder
+        final modelFilePath = path.join(modelFolder.path, 'model.glb');
+        final modelFile = File(modelFilePath);
+        await modelFile.writeAsBytes(response.bodyBytes);
 
-        // Verify file was saved correctly
-        if (await file.exists()) {
-          final fileSize = await file.length();
+        // Verify model file was saved correctly
+        if (await modelFile.exists()) {
+          final fileSize = await modelFile.length();
           debugPrint(
               'DownloadService: GLB model saved successfully. Size: $fileSize bytes');
 
@@ -110,11 +115,23 @@ class ModelRepository {
             throw Exception('Downloaded file is empty');
           }
 
+          // Create info.json file
+          final infoJson = {
+            'model_id': modelId,
+            'prompt': prompt,
+            'timestamp': DateTime.now().toIso8601String(),
+          };
+          final infoFilePath = path.join(modelFolder.path, 'info.json');
+          final infoFile = File(infoFilePath);
+          await infoFile.writeAsString(jsonEncode(infoJson));
+          debugPrint('DownloadService: Created info.json: $infoFilePath');
+
           // Return relative path for use with fileSystemAppFolderGLB
-          // Path is relative to documents folder: "modelId.glb"
+          // Path is relative to documents folder: "modelId/model.glb"
+          final relativePath = path.join(modelId, 'model.glb');
           debugPrint(
-              'DownloadService: Use path: "$fileName" with NodeType.fileSystemAppFolderGLB');
-          return fileName;
+              'DownloadService: Use path: "$relativePath" with NodeType.fileSystemAppFolderGLB');
+          return relativePath;
         } else {
           throw Exception('File was not saved correctly');
         }
@@ -159,10 +176,10 @@ class ModelRepository {
   }
 
   /// Get list of all downloaded models from documents directory
-  /// Returns list of model IDs (filenames without .glb extension)
-  /// Sorted by creation date descending (latest first)
-  /// Also checks and loads asset models in memory
-  Future<List<String>> getDownloadedModels() async {
+  /// Looks for folders containing model.glb and info.json
+  /// Reads info.json to populate ModelResponse objects
+  /// Returns list of ModelResponse sorted by timestamp descending (latest first)
+  Future<List<ModelResponse>> getDownloadedModels() async {
     try {
       final documentsDir = await getApplicationDocumentsDirectory();
       final dir = Directory(documentsDir.path);
@@ -171,58 +188,95 @@ class ModelRepository {
         return [];
       }
 
-      final files = dir.listSync();
-      final modelFiles = <Map<String, dynamic>>[];
+      final entries = dir.listSync();
+      final modelResponses = <ModelResponse>[];
 
-      // Collect files with their modification times
-      for (final file in files.whereType<File>()) {
-        if (file.path.endsWith('.glb')) {
-          try {
-            final stat = await file.stat();
-            final fileName = path.basename(file.path);
-            modelFiles.add({
-              'fileName': fileName,
-              'modified': stat.modified,
-            });
-          } catch (e) {
-            debugPrint(
-                'ModelRepository: Error getting stat for ${file.path}: $e');
+      // Collect ModelResponse objects from folders
+      for (final entry in entries.whereType<Directory>()) {
+        try {
+          final modelGlbPath = path.join(entry.path, 'model.glb');
+          final infoJsonPath = path.join(entry.path, 'info.json');
+          final modelGlbFile = File(modelGlbPath);
+          final infoJsonFile = File(infoJsonPath);
+
+          // Check if folder contains both model.glb and info.json
+          if (await modelGlbFile.exists() && await infoJsonFile.exists()) {
+            // Read and parse info.json
+            final infoJsonContent = await infoJsonFile.readAsString();
+            final infoJson = jsonDecode(infoJsonContent) as Map<String, dynamic>;
+            
+            final modelId = infoJson['model_id'] as String? ?? 
+                           path.basename(entry.path); // Fallback to folder name
+            final prompt = infoJson['prompt'] as String? ?? '';
+            final timestampStr = infoJson['timestamp'] as String?;
+            final timestamp = timestampStr != null 
+                ? DateTime.parse(timestampStr) 
+                : null;
+            
+            // Create ModelResponse with local file path
+            final localFilePath = path.join(modelId, 'model.glb');
+            
+            final modelResponse = ModelResponse(
+              modelId: modelId,
+              downloadUrl: '', // Not needed for local models
+              prompt: prompt,
+              status: 'completed',
+              message: 'Model loaded from local storage',
+              localFilePath: localFilePath,
+              locationType: ModelLocationType.documentsFolder,
+              timestamp: timestamp,
+            );
+            
+            modelResponses.add(modelResponse);
           }
+        } catch (e) {
+          debugPrint(
+              'ModelRepository: Error reading folder ${entry.path}: $e');
         }
       }
 
-      // Sort by modification time descending (latest first)
-      modelFiles.sort((a, b) =>
-          (b['modified'] as DateTime).compareTo(a['modified'] as DateTime));
-
-      final sortedFileNames =
-          modelFiles.map((item) => item['fileName'] as String).toList();
+      // Sort by timestamp descending (latest first), fallback to folder name if no timestamp
+      modelResponses.sort((a, b) {
+        if (a.timestamp != null && b.timestamp != null) {
+          return b.timestamp!.compareTo(a.timestamp!);
+        } else if (a.timestamp != null) {
+          return -1; // a has timestamp, b doesn't - a comes first
+        } else if (b.timestamp != null) {
+          return 1; // b has timestamp, a doesn't - b comes first
+        } else {
+          return b.modelId.compareTo(a.modelId); // Fallback to modelId comparison
+        }
+      });
 
       debugPrint(
-          'ModelRepository: Found ${sortedFileNames.length} downloaded models (sorted by date)');
-      return sortedFileNames;
+          'ModelRepository: Found ${modelResponses.length} downloaded models (sorted by timestamp)');
+      return modelResponses;
     } catch (e) {
       debugPrint('ModelRepository: Error getting downloaded models: $e');
       return [];
     }
   }
 
-  /// Delete a model file from local storage
-  /// modelId can be either just the ID or the full filename (e.g., "modelId.glb")
+  /// Delete a model folder from local storage
+  /// Deletes the entire folder: documentsDir/modelId/
+  /// modelId should be just the folder name (e.g., "abc")
   Future<bool> deleteModel(String modelId) async {
     try {
       final documentsDir = await getApplicationDocumentsDirectory();
-      // Handle both formats: "modelId" or "modelId.glb"
-      final fileName = modelId.endsWith('.glb') ? modelId : '$modelId.glb';
-      final filePath = path.join(documentsDir.path, fileName);
-      final file = File(filePath);
+      // Remove .glb extension if present (for backward compatibility)
+      final folderName = modelId.endsWith('.glb')
+          ? modelId.substring(0, modelId.length - 4)
+          : modelId;
+      final folderPath = path.join(documentsDir.path, folderName);
+      final folder = Directory(folderPath);
 
-      if (await file.exists()) {
-        await file.delete();
-        debugPrint('ModelRepository: Deleted model file: $filePath');
+      if (await folder.exists()) {
+        // Delete the entire folder and its contents
+        await folder.delete(recursive: true);
+        debugPrint('ModelRepository: Deleted model folder: $folderPath');
         return true;
       } else {
-        debugPrint('ModelRepository: Model file not found: $filePath');
+        debugPrint('ModelRepository: Model folder not found: $folderPath');
         return false;
       }
     } catch (e) {

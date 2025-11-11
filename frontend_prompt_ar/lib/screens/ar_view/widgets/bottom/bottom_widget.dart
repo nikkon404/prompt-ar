@@ -83,8 +83,8 @@ class _BottomWidgetState extends State<BottomWidget> {
               assetModels: state.assetModels ?? [],
               downloadedModels: state.downloadedModels ?? [],
               bloc: cubit,
-              onModelApply: (modelId, type) {
-                cubit.loadExistingModel(modelId, type);
+              onModelApply: (model) {
+                cubit.loadExistingModel(model);
                 Navigator.of(context).pop();
               },
             );

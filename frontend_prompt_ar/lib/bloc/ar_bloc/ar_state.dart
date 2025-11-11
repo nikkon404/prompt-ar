@@ -13,7 +13,7 @@ class ARState extends Equatable {
   final String? errorMessage;
   final GenerationMode generationMode;
   final bool isCameraEnabled; // Whether camera is currently enabled
-  final List<String>? downloadedModels; // List of downloaded model IDs
+  final List<ModelResponse>? downloadedModels; // List of downloaded models
   final List<String>? assetModels; // List of asset model file paths
   final List<String>
       placedModelIds; // List of model IDs that are placed in the scene
@@ -38,7 +38,7 @@ class ARState extends Equatable {
     bool clearModelResponse = false,
     GenerationMode? generationMode,
     bool? isCameraEnabled,
-    List<String>? downloadedModels,
+    List<ModelResponse>? downloadedModels,
     List<String>? assetModels,
     List<String>? placedModelIds,
     ARNode? tappedNode,

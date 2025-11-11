@@ -270,6 +270,7 @@ class ARCubit extends Cubit<ARState> {
 
       final localFilePath = await _repository.downloadModel(
         response.modelId,
+        response.prompt,
       );
 
       // Update response with local file path
@@ -360,29 +361,18 @@ class ARCubit extends Cubit<ARState> {
   }
 
   /// Load an existing downloaded model
-  Future<void> loadExistingModel(String modelId, ModelLocationType type) async {
+  Future<void> loadExistingModel(ModelResponse model) async {
     try {
       emit(state.copyWith(
         generationState: GenerationState.initial,
       ));
-      // Create a mock response for the existing model
-      final response = ModelResponse(
-        modelId: modelId,
-        downloadUrl: '', // Not needed for local models
-        prompt: 'Loaded from storage', // Could store prompt if available
-        status: 'completed',
-        message: 'Model loaded from local storage',
-        localFilePath: modelId,
-        locationType: type,
-      );
-
       // Small delay for UI feedback
       await Future.delayed(const Duration(milliseconds: 500));
 
       // AR Ready state - model file is ready to display
       emit(state.copyWith(
         generationState: GenerationState.arReady,
-        modelResponse: response,
+        modelResponse: model,
       ));
     } catch (e) {
       emit(state.copyWith(
@@ -399,7 +389,7 @@ class ARCubit extends Cubit<ARState> {
       if (deleted) {
         //  remove from state list and emit
         final updatedModels =
-            state.downloadedModels?.where((m) => m != modelId).toList();
+            state.downloadedModels?.where((m) => m.modelId != modelId).toList();
         emit(state.copyWith(downloadedModels: updatedModels));
         debugPrint('ARCubit: Model deleted: $modelId');
       } else {
