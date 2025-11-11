@@ -13,6 +13,7 @@ import 'widgets/ar_loading_overlay.dart';
 import 'widgets/ar_error_overlay.dart';
 import 'widgets/ar_instruction_text.dart';
 import 'widgets/bottom/bottom_widget.dart';
+import 'widgets/model_settings_dialog.dart';
 
 class ARViewPage extends StatefulWidget {
   const ARViewPage({super.key});
@@ -70,54 +71,84 @@ class _ARViewPageState extends State<ARViewPage> {
       body: BlocProvider(
         create: (context) => ARCubit(),
         child: BlocConsumer<ARCubit, ARState>(
-          // show info dialof once  state is ready and previous state was not ready
-          listenWhen: (previous, current) =>
-              // true,
-              (previous.generationState != GenerationState.arReady &&
-                  current.generationState == GenerationState.arReady),
+          // show info dialog once state is ready and previous state was not ready
+          // OR when a node is tapped
+          listenWhen: (previous, current) {
+            final isReadyForPlacement =
+                (previous.generationState != GenerationState.arReady &&
+                    current.generationState == GenerationState.arReady);
+            final hasTappedNode = (previous.tappedNode != current.tappedNode &&
+                current.tappedNode != null);
+
+            return isReadyForPlacement || hasTappedNode;
+          },
 
           listener: (context, state) {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: Colors.black26,
-                content: const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // success icon
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 30,
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                        'The 3D model has been loaded into the AR scene. Tap on a detected surface to place the model.',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
+            // Show model ready dialog when state becomes arReady
+            if (state.generationState == GenerationState.arReady) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: Colors.black45,
+                  content: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // success icon
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 30,
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                          'The 3D model has been loaded into the AR scene. Tap on a detected surface to place the model.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          )),
+                      SizedBox(height: 16),
+                      Icon(
+                        Icons.touch_app_outlined,
+                        color: Colors.white,
+                        size: 70,
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text(
+                          'OK',
+                          style: TextStyle(color: Colors.white),
                         )),
-                    SizedBox(height: 16),
-                    Icon(
-                      Icons.touch_app_outlined,
-                      color: Colors.white,
-                      size: 70,
-                    ),
                   ],
                 ),
-                actions: [
-                  TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text(
-                        'OK',
-                        style: TextStyle(color: Colors.white),
-                      )),
-                ],
-              ),
-            );
+              );
+              return;
+            }
+
+            // Show settings dialog when node is selected
+            if (state.tappedNode != null) {
+              final cubit = context.read<ARCubit>();
+              showDialog(
+                context: context,
+                barrierDismissible: true,
+                builder: (dialogContext) => BlocProvider.value(
+                  value: cubit,
+                  child: ModelSettingsDialog(
+                    tappedNode: state.tappedNode!,
+                  ),
+                ),
+              ).then((_) {
+                // Clear selection when dialog is closed
+                if (context.mounted) {
+                  context.read<ARCubit>().clearSelectedNode();
+                }
+              });
+            }
           },
           builder: (context, arState) {
             return Stack(

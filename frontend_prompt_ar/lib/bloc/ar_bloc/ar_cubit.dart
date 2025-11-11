@@ -101,6 +101,41 @@ class ARCubit extends Cubit<ARState> {
         handleTap(hitTestResults);
       };
 
+      // Set node tap handler for selecting nodes and showing settings dialog
+      // Keep it simple - the plugin handles pan/rotate gestures automatically
+      _arObjectManager?.onNodeTap = (List<String> nodeNames) {
+        debugPrint('ARView: onNodeTap called with nodeNames: $nodeNames');
+
+        if (nodeNames.isEmpty) return;
+
+        final tappedNode = _placedModelNodes[nodeNames.first];
+        emit(state.copyWith(tappedNode: tappedNode));
+      };
+
+      // Set pan end handler to update node transform
+      // Update the transform directly to match what the plugin provides
+      _arObjectManager?.onPanEnd = (String nodeName, Matrix4 transform) {
+        final node = _placedModelNodes[nodeName];
+        if (node != null) {
+          // Update the transform directly - this preserves all properties correctly
+          node.transform = transform;
+          debugPrint(
+              'ARCubit: Updated transform (position) for node $nodeName');
+        }
+      };
+
+      // Set rotation end handler to update node transform
+      // Update the transform directly to match what the plugin provides
+      _arObjectManager?.onRotationEnd = (String nodeName, Matrix4 transform) {
+        final node = _placedModelNodes[nodeName];
+        if (node != null) {
+          // Update the transform directly - this preserves all properties correctly
+          node.transform = transform;
+          debugPrint(
+              'ARCubit: Updated transform (rotation) for node $nodeName');
+        }
+      };
+
       debugPrint('ARView: AR session initialized');
 
       emit(state.copyWith(generationState: GenerationState.idle));
@@ -190,7 +225,7 @@ class ARCubit extends Cubit<ARState> {
 
       if (didAddNode == true) {
         // Store node for this model placement
-        _placedModelNodes[placementId] = node;
+        _placedModelNodes[node.name] = node;
 
         // Add placement ID to placed models list
         final updatedPlacedModels = List<String>.from(state.placedModelIds)
@@ -269,10 +304,13 @@ class ARCubit extends Cubit<ARState> {
       }
       _placedAnchors.clear();
     }
+
     emit(state.copyWith(
       placedModelIds: [],
       currentPrompt: '',
       modelResponse: null,
+      clearModelResponse: true,
+      clearTappedNode: true,
       generationState: GenerationState.idle,
     ));
     debugPrint('ARView: All models cleared from scene');
@@ -370,5 +408,20 @@ class ARCubit extends Cubit<ARState> {
     } catch (e) {
       debugPrint('ARCubit: Error deleting model: $e');
     }
+  }
+
+  /// Clear selected node
+  void clearSelectedNode() {
+    emit(state.copyWith(clearTappedNode: true));
+  }
+
+  /// Update node scale
+  void updateNodeScale(String nodeName, vector.Vector3 updatedScale) {
+    final node = _placedModelNodes[nodeName];
+    if (node != null) {
+      node.scale = updatedScale;
+      _placedModelNodes[nodeName] = node;
+    }
+    return;
   }
 }

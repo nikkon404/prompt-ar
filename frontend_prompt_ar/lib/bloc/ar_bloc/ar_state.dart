@@ -1,12 +1,14 @@
 import 'package:equatable/equatable.dart';
 import 'package:prompt_ar/models/generation_mode.dart';
+import 'package:ar_flutter_plugin_2/models/ar_node.dart';
 import '../../models/generation_state.dart';
 import '../../models/model_response.dart';
 
 /// States for AR BLoC
 class ARState extends Equatable {
   final GenerationState generationState;
-  final ModelResponse? modelResponse;
+  final ModelResponse? modelResponse; //
+  final ARNode? tappedNode; // Currently tapped/selected node
   final String currentPrompt;
   final String? errorMessage;
   final GenerationMode generationMode;
@@ -25,6 +27,7 @@ class ARState extends Equatable {
     this.downloadedModels,
     this.assetModels,
     this.placedModelIds = const [],
+    this.tappedNode,
   });
 
   ARState copyWith({
@@ -38,6 +41,8 @@ class ARState extends Equatable {
     List<String>? downloadedModels,
     List<String>? assetModels,
     List<String>? placedModelIds,
+    ARNode? tappedNode,
+    bool clearTappedNode = false,
   }) {
     return ARState(
       generationState: generationState ?? this.generationState,
@@ -50,6 +55,7 @@ class ARState extends Equatable {
       downloadedModels: downloadedModels ?? this.downloadedModels,
       assetModels: assetModels ?? this.assetModels,
       placedModelIds: placedModelIds ?? this.placedModelIds,
+      tappedNode: clearTappedNode ? null : (tappedNode ?? this.tappedNode),
     );
   }
 
@@ -68,5 +74,6 @@ class ARState extends Equatable {
         downloadedModels,
         assetModels,
         placedModelIds,
+        tappedNode,
       ];
 }

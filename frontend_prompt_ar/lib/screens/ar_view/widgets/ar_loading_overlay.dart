@@ -47,7 +47,7 @@ class _ARLoadingOverlayState extends State<ARLoadingOverlay>
   }
 
   String get _message {
-    final waitingSeconds = widget.mode == GenerationMode.advanced ? 25 : 15;
+    final waitingSeconds = widget.mode == GenerationMode.advanced ? 30 : 20;
     switch (widget.state) {
       case GenerationState.generating:
         return 'Generating 3D model for "${widget.prompt}"\nThis may take about $waitingSeconds seconds.';
