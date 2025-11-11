@@ -1,6 +1,6 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=/Users/nikkon/fvm/versions/3.24.3"
+export "FLUTTER_ROOT=/Users/nikkon/fvm/versions/3.35.7"
 export "FLUTTER_APPLICATION_PATH=/Users/nikkon/Development/AI/prompt_ar/frontend_prompt_ar"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
