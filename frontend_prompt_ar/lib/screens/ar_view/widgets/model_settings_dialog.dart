@@ -18,29 +18,41 @@ class ModelSettingsDialog extends StatefulWidget {
 }
 
 class _ModelSettingsDialogState extends State<ModelSettingsDialog> {
-  late double _scale;
+  late double _scaleMultiplier;
+  late vector.Vector3 _initialScale;
 
   @override
   void initState() {
     super.initState();
     final scale = widget.tappedNode.scale;
-
-    // Use average of X, Y, Z scales, or default to 1.0
-    _scale = (scale.x + scale.y + scale.z) / 3.0;
+    
+    // Store the initial scale (use average for uniform scaling)
+    final avgScale = (scale.x + scale.y + scale.z) / 3.0;
+    _initialScale = vector.Vector3(avgScale, avgScale, avgScale);
+    
+    // Start with 1.0x multiplier (original size)
+    _scaleMultiplier = 1.0;
   }
 
-  void _onScaleChanged(double value) {
+  void _onScaleChanged(double multiplier) {
     setState(() {
-      _scale = value;
+      _scaleMultiplier = multiplier;
     });
   }
 
-  void _onScaleChangeEnd(double value) {
+  void _onScaleChangeEnd(double multiplier) {
+    // Calculate the new scale based on initial scale and multiplier
+    final newScale = vector.Vector3(
+      _initialScale.x * multiplier,
+      _initialScale.y * multiplier,
+      _initialScale.z * multiplier,
+    );
+    
     // Update scale only when slider drag ends
     final cubit = context.read<ARCubit>();
     cubit.updateNodeScale(
       widget.tappedNode.name,
-      vector.Vector3(value, value, value),
+      newScale,
     );
   }
 
@@ -102,14 +114,15 @@ class _ModelSettingsDialogState extends State<ModelSettingsDialog> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Single overall scale slider
+                      // Single overall scale slider (multiplier relative to initial scale)
                       _buildSlider(
                         label: 'Size',
-                        value: _scale,
+                        value: _scaleMultiplier,
                         min: 0.1,
-                        max: 5.0,
+                        max: 3.0,
                         onChanged: _onScaleChanged,
                         onChangeEnd: _onScaleChangeEnd,
+                        displayValue: '${_scaleMultiplier.toStringAsFixed(2)}x',
                       ),
                     ],
                   ),
@@ -170,6 +183,7 @@ class _ModelSettingsDialogState extends State<ModelSettingsDialog> {
     required double max,
     required ValueChanged<double> onChanged,
     ValueChanged<double>? onChangeEnd,
+    String? displayValue,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
@@ -188,7 +202,7 @@ class _ModelSettingsDialogState extends State<ModelSettingsDialog> {
                 ),
               ),
               Text(
-                value.toStringAsFixed(2),
+                displayValue ?? value.toStringAsFixed(2),
                 style: const TextStyle(
                   fontSize: 13,
                   color: Colors.white70,

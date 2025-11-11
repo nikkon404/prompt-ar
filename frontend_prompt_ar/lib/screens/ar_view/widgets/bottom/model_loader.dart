@@ -5,14 +5,14 @@ import '../../../../models/model_response.dart';
 /// Model card widget for displaying models in the list
 class _ModelCard extends StatelessWidget {
   const _ModelCard({
-    required this.modelId,
+    required this.model,
     required this.index,
     required this.locationType,
     required this.onApply,
     this.onDelete,
   });
 
-  final String modelId;
+  final ModelResponse model;
   final int index;
   final ModelLocationType locationType;
   final VoidCallback onApply;
@@ -65,8 +65,12 @@ class _ModelCard extends StatelessWidget {
                   children: [
                     Text(
                       locationType == ModelLocationType.asset
-                          ? modelId.split('/').last.split('.').first
-                          : 'Model #${index + 1}',
+                          ? (model.localFilePath ?? model.modelId)
+                              .split('/')
+                              .last
+                              .split('.')
+                              .first
+                          : model.prompt,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -108,9 +112,9 @@ class LoadModelDialog extends StatefulWidget {
   });
 
   final List<String> assetModels;
-  final List<String> downloadedModels;
+  final List<ModelResponse> downloadedModels;
   final ARCubit bloc;
-  final Function(String, ModelLocationType) onModelApply;
+  final Function(ModelResponse) onModelApply;
 
   @override
   State<LoadModelDialog> createState() => _LoadModelDialogState();
@@ -132,7 +136,7 @@ class _LoadModelDialogState extends State<LoadModelDialog>
     super.dispose();
   }
 
-  void _showDeleteConfirmation(BuildContext context, String modelId) {
+  void _showDeleteConfirmation(BuildContext context, ModelResponse model) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog.adaptive(
@@ -145,7 +149,7 @@ class _LoadModelDialogState extends State<LoadModelDialog>
           ),
           TextButton(
             onPressed: () {
-              widget.bloc.deleteModel(modelId);
+              widget.bloc.deleteModel(model.modelId);
               Navigator.of(context).pop();
             },
             style: TextButton.styleFrom(
@@ -225,14 +229,12 @@ class _LoadModelDialogState extends State<LoadModelDialog>
               controller: _tabController,
               children: [
                 // Downloaded tab
-                _buildModelList(
+                _buildDownloadedModelList(
                   models: widget.downloadedModels,
-                  type: ModelLocationType.documentsFolder,
                 ),
                 // Demo tab
-                _buildModelList(
+                _buildAssetModelList(
                   models: widget.assetModels,
-                  type: ModelLocationType.asset,
                 ),
               ],
             ),
@@ -242,17 +244,15 @@ class _LoadModelDialogState extends State<LoadModelDialog>
     );
   }
 
-  Widget _buildModelList({
+  Widget _buildAssetModelList({
     required List<String> models,
-    required ModelLocationType type,
   }) {
-    final isDemo = type == ModelLocationType.asset;
     if (models.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
           child: Text(
-            isDemo ? 'No demo models available' : 'No downloaded models found',
+            'No demo models available',
             style: const TextStyle(
               fontSize: 16,
               color: Colors.grey,
@@ -272,18 +272,67 @@ class _LoadModelDialogState extends State<LoadModelDialog>
       shrinkWrap: true,
       itemCount: models.length,
       itemBuilder: (context, index) {
-        final modelId = models[index];
+        final assetPath = models[index];
+        // Create a ModelResponse for asset models
+        final model = ModelResponse(
+          modelId: assetPath.split('/').last.split('.').first,
+          downloadUrl: '',
+          prompt: assetPath.split('/').last.split('.').first,
+          status: 'completed',
+          message: 'Asset model',
+          localFilePath: assetPath,
+          locationType: ModelLocationType.asset,
+        );
 
         return _ModelCard(
-          modelId: modelId,
+          model: model,
           index: index,
-          locationType: type,
-          onApply: () => widget.onModelApply(modelId, type),
-          onDelete:
-              isDemo ? null : () => _showDeleteConfirmation(context, modelId),
+          locationType: ModelLocationType.asset,
+          onApply: () => widget.onModelApply(model),
+          onDelete: null, // Asset models can't be deleted
+        );
+      },
+    );
+  }
+
+  Widget _buildDownloadedModelList({
+    required List<ModelResponse> models,
+  }) {
+    if (models.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            'No downloaded models found',
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 3,
+        crossAxisSpacing: 11,
+        childAspectRatio: 2.5,
+      ),
+      shrinkWrap: true,
+      itemCount: models.length,
+      itemBuilder: (context, index) {
+        final model = models[index];
+
+        return _ModelCard(
+          model: model,
+          index: index,
+          locationType: ModelLocationType.documentsFolder,
+          onApply: () => widget.onModelApply(model),
+          onDelete: () => _showDeleteConfirmation(context, model),
         );
       },
     );
   }
 }
-
