@@ -25,11 +25,11 @@ class _ModelSettingsDialogState extends State<ModelSettingsDialog> {
   void initState() {
     super.initState();
     final scale = widget.tappedNode.scale;
-    
+
     // Store the initial scale (use average for uniform scaling)
     final avgScale = (scale.x + scale.y + scale.z) / 3.0;
     _initialScale = vector.Vector3(avgScale, avgScale, avgScale);
-    
+
     // Start with 1.0x multiplier (original size)
     _scaleMultiplier = 1.0;
   }
@@ -47,7 +47,7 @@ class _ModelSettingsDialogState extends State<ModelSettingsDialog> {
       _initialScale.y * multiplier,
       _initialScale.z * multiplier,
     );
-    
+
     // Update scale only when slider drag ends
     final cubit = context.read<ARCubit>();
     cubit.updateNodeScale(
@@ -66,7 +66,7 @@ class _ModelSettingsDialogState extends State<ModelSettingsDialog> {
           maxHeight: MediaQuery.of(context).size.height * 0.55,
         ),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.5),
+          color: Colors.black.withAlpha(128),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Padding(
@@ -215,7 +215,7 @@ class _ModelSettingsDialogState extends State<ModelSettingsDialog> {
               activeTrackColor: Colors.white,
               inactiveTrackColor: Colors.white30,
               thumbColor: Colors.white,
-              overlayColor: Colors.white.withOpacity(0.2),
+              overlayColor: Colors.white.withAlpha(50),
               valueIndicatorColor: Colors.black87,
             ),
             child: Slider(

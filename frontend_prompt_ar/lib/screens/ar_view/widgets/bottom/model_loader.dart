@@ -308,12 +308,12 @@ class _LoadModelDialogState extends State<LoadModelDialog>
     required List<ModelResponse> models,
   }) {
     if (models.isEmpty) {
-      return Center(
+      return const Center(
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
+          padding: EdgeInsets.all(32.0),
           child: Text(
             'No downloaded models found',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               color: Colors.grey,
             ),
