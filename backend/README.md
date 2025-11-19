@@ -1,100 +1,67 @@
-# PromptAR Backend
+---
+title: PromptAR Backend API
+emoji: 🎨
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+license: mit
+app_port: 7860
+---
 
-FastAPI server for 3D model generation from text prompts using TRELLIS and Shap-E.
+# PromptAR Backend API
 
-## Setup
+FastAPI backend for generating 3D models from text prompts using AI, optimized for AR applications.
 
-1. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On macOS/Linux
-# or
-venv\Scripts\activate  # On Windows
-```
+## Features
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. **Configure Hugging Face Token (Required):**
-   
-   **The backend requires a Hugging Face token to generate 3D models.**
-   
-   Get your Hugging Face token from https://huggingface.co/settings/tokens
-   (Free account works - no Pro subscription needed)
-   
-   **Option 1: Using .env file (Recommended)**
-   
-   Create a `.env` file in the `backend` directory:
-   ```bash
-   cd backend
-   touch .env
-   ```
-   
-   Then edit `.env` and add your token:
-   ```bash
-   HF_TOKEN=your_huggingface_token_here
-   ```
-   
-   **Option 2: Using environment variable**
-   
-   ```bash
-   export HF_TOKEN=your_huggingface_token_here
-   ```
-   
-   **The server will start without HF_TOKEN, but model generation will fail!**
-
-## Running the Server
-
-**Option 1: Using Python (Recommended)**
-```bash
-python main.py
-```
-
-**Option 2: Using uvicorn directly**
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-**Note:** Make sure you're in the `backend` directory and have activated your virtual environment before running.
-
-The server will start at `http://localhost:8000`
-
-## API Documentation
-
-Once the server is running, visit:
-- Interactive API docs: `http://localhost:8000/docs`
-- Alternative docs: `http://localhost:8000/redoc`
+- 🎨 **Text-to-3D Generation**: Generate 3D models from text prompts using TRELLIS and Shap-E
+- 🚀 **Two Generation Modes**: 
+  - **Advanced Mode** (TRELLIS): High-quality textured models
+  - **Basic Mode** (Shap-E): Fast generation with basic geometry
+- 📦 **GLB Format**: Direct export to GLB format optimized for AR
+- 🔧 **AR-Optimized**: Automatic brightness normalization for better AR visibility
+- 📊 **Request Logging**: Built-in database for tracking API requests
+- 🌐 **CORS Enabled**: Ready for cross-origin requests from mobile and web apps
+- 🛡️ **Rate Limiting**: Global rate limiting to prevent API abuse (configurable per IP)
 
 ## API Endpoints
 
-### Root Endpoints
+### 🏠 Root Endpoints
 
-#### GET `/`
-Root endpoint providing API information.
+- **GET `/`** - API information and status
+- **GET `/health`** - Health check endpoint
 
-#### GET `/health`
-Health check endpoint.
+### 🎨 Model Generation
 
-### Model Endpoints
+- **POST `/api/models/generate`** - Generate a 3D model from text
+  ```json
+  {
+    "prompt": "wooden chair",
+    "mode": "advanced"
+  }
+  ```
 
-#### POST `/api/models/generate`
-Generate a 3D model from a text prompt.
+- **GET `/api/models/download/{model_id}`** - Download generated model
 
-**Request body:**
-```json
-{
-  "prompt": "wooden chair",
-  "mode": "advanced"
-}
+## Usage
+
+### API Documentation
+
+Once deployed, visit:
+- Interactive docs: `https://your-space-url.hf.space/docs`
+- Alternative docs: `https://your-space-url.hf.space/redoc`
+
+### Example Request
+
+```bash
+curl -X POST "https://your-space-url.hf.space/api/models/generate" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "a red sports car", "mode": "advanced"}'
 ```
 
-**Mode options:**
-- `"basic"`: Uses Shap-E for 3D model generation (faster, simpler)
-- `"advanced"`: Uses TRELLIS for 3D model generation with textures (higher quality)
+### Response
 
-**Response:**
 ```json
 {
   "status": "success",
@@ -104,101 +71,97 @@ Generate a 3D model from a text prompt.
 }
 ```
 
-**How it works:**
-1. Receives text prompt (e.g., "wooden chair") and mode
-2. Uses TRELLIS (advanced) or Shap-E (basic) via Hugging Face Spaces to generate a 3D model
-3. Model is generated in GLB format with textures (TRELLIS) or basic geometry (Shap-E)
-4. Stores the model locally and returns download URL
-5. Model is served via the download endpoint
+## Configuration
 
-**Note:** 
-- HF_TOKEN is required for model generation
-- Uses free Hugging Face Spaces (may have queue times during peak usage)
-- Generation typically takes 10-30 seconds (TRELLIS) or 5-10 seconds (Shap-E)
-- Spaces may be sleeping (free tier) - they wake up automatically on first use
+The backend uses environment variables for configuration. In Hugging Face Spaces, set these in the **Settings > Repository Secrets**:
 
-#### GET `/api/models/download/{model_id}`
-Download a generated 3D model file (GLB format).
+### Required
+- `HF_TOKEN` - Your Hugging Face API token (get it from [Settings](https://huggingface.co/settings/tokens))
 
-**Features:**
-- Applies brightness normalization for AR visibility
-- Returns normalized GLB file as single binary
-- Automatic cleanup after download
+### Optional
+- `ALLOWED_ORIGINS` - CORS allowed origins (default: "*")
+- `MODEL_STORAGE_PATH` - Path for storing models (default: "./models")
+- `RATE_LIMIT_REQUESTS` - Maximum requests per time window (default: "5")
+- `RATE_LIMIT_WINDOW_SECONDS` - Time window in seconds for rate limiting (default: "60")
 
-Returns the generated `.glb` file for use in AR applications.
+### Rate Limiting
+
+The API has global rate limiting enabled to prevent abuse. By default, each IP address is limited to **5 requests per 60 seconds** across all endpoints. When the limit is exceeded, the API returns a `429 Too Many Requests` status with a `Retry-After` header indicating when to retry.
+
+You can configure the rate limits using environment variables:
+- `RATE_LIMIT_REQUESTS`: Number of requests allowed (default: 5)
+- `RATE_LIMIT_WINDOW_SECONDS`: Time window in seconds (default: 60)
+
+Example: To allow 10 requests per minute, set `RATE_LIMIT_REQUESTS=10` and `RATE_LIMIT_WINDOW_SECONDS=60`.
 
 ## Architecture
 
-The backend follows a modular architecture:
+The backend is built with:
+- **FastAPI**: Modern Python web framework
+- **Gradio Client**: Integration with HF Spaces (TRELLIS, Shap-E)
+- **Pydantic**: Data validation
+- **SQLite**: Request logging database
+- **pygltflib**: 3D model processing
 
-- **Schemas** (`schemas/`): Define request/response models using Pydantic
-- **Routers** (`routers/`): Handle HTTP requests and route them to services
-- **Services** (`services/`): Contain business logic and data management
-  - `huggingface_service.py`: Handles TRELLIS and Shap-E integration via Gradio Client
-  - `storage_service.py`: Manages model storage and metadata
-  - `ar_material_service.py`: Applies brightness normalization for AR visibility
-- **Config** (`config.py`): Centralized configuration settings
+### Project Structure
 
-### 3D Model Generation
-
-The backend supports two text-to-3D generation modes:
-
-**Advanced Mode (TRELLIS):**
-- **Model**: TRELLIS (Microsoft)
-- **Space**: `dkatz2391/TRELLIS_TextTo3D_Try2` (free, hosted on Hugging Face)
-- **Format**: GLB with textures and colors
-- **Speed**: ~10-30 seconds per generation
-- **Quality**: High-quality textured models optimized for AR
-
-**Basic Mode (Shap-E):**
-- **Model**: OpenAI's Shap-E
-- **Space**: `hysts/Shap-E` (free, hosted on Hugging Face)
-- **Format**: GLB (basic geometry)
-- **Speed**: ~5-10 seconds per generation
-- **Quality**: Fast generation with basic geometry
-
-### Client Initialization
-
-The service includes retry logic with exponential backoff for client initialization:
-- Retries up to 3 times if initialization fails
-- Exponential backoff delays (5s, 10s)
-- Non-blocking: Service starts even if clients fail to initialize
-- Spaces wake up automatically when first used
-
-This separation of concerns makes the codebase:
-- Easier to test
-- More maintainable
-- Scalable for future enhancements
-
-## Configuration
-
-### Environment Variables
-
-Create a `.env` file in the `backend` directory:
-
-```bash
-# Required
-HF_TOKEN=your_huggingface_token_here
-
-# Optional (defaults shown)
-HOST=0.0.0.0
-PORT=8000
-MODEL_STORAGE_PATH=./models
-ALLOWED_ORIGINS=*
+```
+backend/
+├── app/                    # Application factory
+│   └── app.py             # FastAPI app creation
+├── routers/               # API route handlers
+│   ├── root.py           # Root endpoints
+│   └── models.py         # Model generation endpoints
+├── services/             # Business logic
+│   ├── huggingface_service.py   # AI model integration
+│   ├── storage_service.py       # Model storage
+│   ├── ar_material_service.py   # AR optimization
+│   └── database_service.py      # Request logging
+├── schemas/              # Request/response models
+├── middleware/           # Custom middleware
+├── utils/               # Utilities
+├── config.py            # Configuration
+└── main.py             # Entry point
 ```
 
-### Model Storage
+## 3D Model Generation
 
-Generated 3D models are stored in the `models/` directory (default). Each model is saved as a `.glb` file with a unique UUID filename. Models are automatically cleaned up after download to save storage space.
+### Advanced Mode (TRELLIS)
+- High-quality textured 3D models
+- ~10-30 seconds generation time
+- Uses Microsoft's TRELLIS model
+- Optimized for AR applications
 
-## Dependencies
+### Basic Mode (Shap-E)
+- Fast generation
+- ~5-10 seconds generation time
+- Uses OpenAI's Shap-E model
+- Basic geometry without textures
 
-Key dependencies:
-- `fastapi`: Web framework
-- `gradio_client`: For interacting with Hugging Face Spaces
-- `uvicorn`: ASGI server
-- `pydantic`: Data validation
-- `python-dotenv`: Environment variable management
-- `httpx`: HTTP client for downloading models
+## Development
 
-See `requirements.txt` for the complete list.
+To run locally:
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Set environment variables
+export HF_TOKEN=your_token_here
+
+# Run the server
+python main.py
+```
+
+Visit `http://localhost:8000/docs` for API documentation.
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Links
+
+- 🏠 [Project Repository](https://github.com/yourusername/prompt_ar)
+- 📱 [Flutter Frontend](https://github.com/yourusername/prompt_ar/tree/main/frontend_prompt_ar)
+- 📖 [Full Documentation](https://github.com/yourusername/prompt_ar/blob/main/README.md)
+

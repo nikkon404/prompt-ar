@@ -49,6 +49,14 @@ ALLOWED_ORIGINS: List[str] = (
 # Model Configuration
 MODEL_STORAGE_PATH = get_config("MODEL_STORAGE_PATH", "./models")
 
+# Database Configuration
+# Use persistent storage on Hugging Face Spaces (/data), otherwise use local path
+# /data is persistent storage on Hugging Face Spaces that survives restarts
+_default_db_path = (
+    "/data/api_requests.db" if Path("/data").exists() else "./api_requests.db"
+)
+DB_PATH = get_config("DB_PATH", _default_db_path)
+
 # Hugging Face Configuration (Required)
 HF_TOKEN = get_config("HF_TOKEN", "")
 if not HF_TOKEN:
@@ -63,3 +71,7 @@ if not HF_TOKEN:
 # Using TRELLIS: https://huggingface.co/spaces/dkatz2391/TRELLIS_TextTo3D_Try2
 # Generates textured GLB files directly from text prompts
 # Uses texture_size parameter to ensure textures are embedded in GLB files
+
+# Rate Limiting Configuration (Global - requests per minute per IP)
+RATE_LIMIT_REQUESTS = int(get_config("RATE_LIMIT_REQUESTS", "5"))
+RATE_LIMIT_WINDOW_SECONDS = int(get_config("RATE_LIMIT_WINDOW_SECONDS", "60"))

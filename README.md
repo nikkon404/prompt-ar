@@ -53,6 +53,8 @@
 
 ### Backend (Python FastAPI)
 - **Framework**: FastAPI REST API server
+- **Hosting**: The backend is hosted on [Hugging Face Spaces](https://huggingface.co/spaces) at [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)
+- **Live API**: [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)
 - **AI Integration**: Hugging Face Spaces API for 3D model generation
 - **Model Options**:
   - **Shap-E** (Basic): Faster generation, simpler geometry
@@ -72,6 +74,13 @@
 - **Device**: iOS or Android device with AR support (ARCore/ARKit)
 
 ### Backend Setup
+
+**Note**: The backend is already hosted on Hugging Face Spaces at [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space). You can use the hosted version directly, or run your own local instance for development.
+
+#### Using the Hosted Backend (Recommended)
+The backend is publicly available and ready to use. No setup required!
+
+#### Running Local Backend (Optional)
 
 1. Navigate to the backend directory:
 ```bash
@@ -123,11 +132,20 @@ flutter pub get
 3. Configure environment:
    - Create a `.env` file in the `frontend_prompt_ar` directory:
    ```bash
-   BACKEND_URL=http://your-backend-url:8000
+   # Use the hosted backend on Hugging Face Spaces (recommended)
+   BACKEND_BASE_URL=https://xnikkon-prmpt-ar-be.hf.space
+   
+   # Or use local backend for development:
+   # BACKEND_BASE_URL=http://localhost:8000
+   # For Android emulator, use: BACKEND_BASE_URL=http://10.0.2.2:8000
+   # For iOS simulator, use: BACKEND_BASE_URL=http://localhost:8000
+   
+   # Optional: Configure timeouts (in seconds)
+   # GENERATION_TIMEOUT=600
+   # DOWNLOAD_TIMEOUT=300
    ```
-   - For local development, use: `BACKEND_URL=http://localhost:8000`
-   - For Android emulator, use: `BACKEND_URL=http://10.0.2.2:8000`
-   - For iOS simulator, use: `BACKEND_URL=http://localhost:8000`
+   
+   **Note**: The backend is hosted on Hugging Face Spaces at [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space). You can use this hosted version or run your own local backend.
 
 4. Run the app:
 ```bash
@@ -135,6 +153,8 @@ flutter run
 ```
 
 ## 📡 API Endpoints
+
+The backend API is hosted on Hugging Face Spaces and available at: **[https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)**
 
 ### POST `/api/models/generate`
 Generate a 3D model from a text prompt.
@@ -166,6 +186,8 @@ Download a generated 3D model file (GLB format).
 
 ### GET `/health`
 Health check endpoint to verify backend connectivity.
+
+**Example**: [https://xnikkon-prmpt-ar-be.hf.space/health](https://xnikkon-prmpt-ar-be.hf.space/health)
 
 ## 🎨 Model Generation
 
@@ -260,11 +282,24 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 This project is licensed under the CC0-1.0 License - See [LICENSE](LICENSE) file for details.
 
+## 🌐 Backend Hosting
+
+The backend API is hosted on **Hugging Face Spaces** and is publicly available:
+
+- **Live API**: [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)
+- **API Documentation**: [https://xnikkon-prmpt-ar-be.hf.space/docs](https://xnikkon-prmpt-ar-be.hf.space/docs)
+- **Health Check**: [https://xnikkon-prmpt-ar-be.hf.space/health](https://xnikkon-prmpt-ar-be.hf.space/health)
+
+You can use this hosted backend directly by configuring your `.env` file with:
+```bash
+BACKEND_BASE_URL=https://xnikkon-prmpt-ar-be.hf.space
+```
+
 ## 🙏 Acknowledgments
 
 - [TRELLIS](https://huggingface.co/spaces/dkatz2391/TRELLIS_TextTo3D_Try2) - Advanced 3D model generation by Microsoft
 - [Shap-E](https://github.com/openai/shap-e) - Basic 3D model generation by OpenAI
-- [Hugging Face](https://huggingface.co/) - Model hosting and inference platform
+- [Hugging Face](https://huggingface.co/) - Model hosting and inference platform, and Spaces hosting
 - [AR Flutter Plugin](https://github.com/nikkon404/ar_flutter_plugin_2) - AR visualization framework
 
 ## 📞 Support

@@ -56,23 +56,10 @@ def sanitize_error_message(error: Exception) -> str:
 
 
 def get_hf_service():
-    """Get HuggingFaceService instance from main module."""
-    import sys
+    """Get HuggingFaceService instance from app."""
+    from app.app import get_hf_service as _get_hf_service
 
-    # Try to get the main module - could be 'main' or '__main__' depending on how it was run
-    main_module = None
-    if "main" in sys.modules:
-        main_module = sys.modules["main"]
-    elif "__main__" in sys.modules:
-        # When running as script, check if it's our main.py
-        main_module = sys.modules["__main__"]
-
-    # Fallback: import main module
-    if not main_module:
-        import main as main_module
-
-    # Access hf_service dynamically from the module
-    hf_service = getattr(main_module, "hf_service", None)
+    hf_service = _get_hf_service()
 
     if not hf_service:
         raise HTTPException(
@@ -80,24 +67,6 @@ def get_hf_service():
             detail="HuggingFaceService not initialized. Check HF_TOKEN configuration.",
         )
     return hf_service
-
-
-def cleanup_model_file(glb_path: Path):
-    """Cleanup function to delete model file after download.
-
-    This runs as a background task after the response is sent to the client.
-
-    Args:
-        glb_path: Path to the GLB file to delete
-    """
-    try:
-        if glb_path.exists():
-            glb_path.unlink()
-            logger.info(f"✓ Deleted GLB file after download: {glb_path}")
-        else:
-            logger.warning(f"GLB file not found for deletion: {glb_path}")
-    except Exception as delete_error:
-        logger.warning(f"Failed to delete GLB file after download: {delete_error}")
 
 
 @router.post("/generate", response_model=GenerationResponse)
@@ -212,21 +181,18 @@ async def download_model(model_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=404, detail="Model file not found")
 
     try:
-        # Apply brightness normalization to GLB file before serving
-        logger.info("Applying brightness normalization to GLB file...")
+        # Apply brightness normalization for AR visibility before serving
+        logger.info(
+            "Applying brightness normalization to GLB file for AR visibility..."
+        )
         normalize_materials_for_ar(glb_path)
         logger.info("✓ Brightness normalization applied to GLB")
 
-        # Read normalized GLB file content
+        # Read GLB file content
         with open(glb_path, "rb") as f:
             glb_content = f.read()
 
-        logger.info(
-            f"Serving normalized GLB file: {glb_path} ({len(glb_content)} bytes)"
-        )
-
-        # Schedule cleanup task to run after response is sent
-        background_tasks.add_task(cleanup_model_file, glb_path)
+        logger.info(f"Serving GLB file: {glb_path} ({len(glb_content)} bytes)")
 
         # Create response
         response = Response(
