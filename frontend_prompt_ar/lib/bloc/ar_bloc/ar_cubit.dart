@@ -203,7 +203,7 @@ class ARCubit extends Cubit<ARState> {
       _placedAnchors[placementId] = newAnchor;
 
       final size =
-          isDownloaded ? 30.0 : 0.6; // Larger size for downloaded models
+          isDownloaded ? 60.0 : 0.6; // Larger size for downloaded models
       // Place GLB model at anchor
       final node = ARNode(
         type: isDownloaded
