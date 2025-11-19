@@ -5,6 +5,8 @@
   
   **Generate 3D objects from text prompts and visualize them in Augmented Reality**
   
+  ![Preview](preview.gif)
+  
   [![Flutter](https://img.shields.io/badge/Flutter-3.5.3+-02569B?logo=flutter)](https://flutter.dev/)
   [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)](https://www.python.org/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -40,231 +42,69 @@
 
 ## 🏗️ Architecture
 
-### Frontend (Flutter)
-- **Framework**: Flutter for cross-platform mobile development
-- **AR Engine**: AR Flutter Plugin 2 (ARCore for Android, ARKit for iOS)
-- **State Management**: BLoC pattern for reactive state management
-- **Architecture**: Clean architecture with separation of concerns
-- **Features**:
-  - Camera integration for AR experience
-  - Real-time model loading and rendering
-  - Gesture-based model manipulation
-  - Error handling and loading states
+Prompt AR consists of two main components:
 
-### Backend (Python FastAPI)
-- **Framework**: FastAPI REST API server
-- **Hosting**: The backend is hosted on [Hugging Face Spaces](https://huggingface.co/spaces) at [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)
-- **Live API**: [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)
-- **AI Integration**: Hugging Face Spaces API for 3D model generation
-- **Model Options**:
-  - **Shap-E** (Basic): Faster generation, simpler geometry
-  - **TRELLIS** (Advanced): Higher quality with textures, more detailed models
-- **Features**:
-  - Model storage and management
-  - AR-optimized material processing
-  - Async request handling
-  - Health check endpoints
+- **Frontend (Flutter)**: Cross-platform mobile app for AR visualization
+- **Backend (FastAPI)**: REST API for 3D model generation
+
+### System Flow
+
+<div align="center">
+  <img src="backend/architecture_diagram.png" alt="Prompt AR Architecture Diagram" width="800"/>
+</div>
+
+**Flow Overview:**
+1. User enters text prompt in Flutter app
+2. App sends request to Backend with model type selection (Basic/Advanced)
+3. Backend generates 3D model using Shap-E (Basic) or TRELLIS (Advanced)
+4. Backend applies `normalize_gltf_materials` for AR optimization
+5. Backend returns download URL
+6. Frontend downloads and displays model in AR view
+
+See [Frontend README](frontend_prompt_ar/README.md) and [Backend README](backend/README.md) for detailed architecture and setup instructions.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- **Backend**: Python 3.11+, Hugging Face account (free)
+- **Backend**: Python 3.11+, Hugging Face account (free) - *or use the hosted backend*
 - **Frontend**: Flutter SDK 3.5.3+, iOS 12+ or Android API 21+
 - **Device**: iOS or Android device with AR support (ARCore/ARKit)
 
-### Backend Setup
+### Using the Hosted Backend (Recommended)
 
-**Note**: The backend is already hosted on Hugging Face Spaces at [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space). You can use the hosted version directly, or run your own local instance for development.
+The backend is already hosted on Hugging Face Spaces and ready to use:
+- **Live API**: [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)
+- **API Docs**: [https://xnikkon-prmpt-ar-be.hf.space/docs](https://xnikkon-prmpt-ar-be.hf.space/docs)
 
-#### Using the Hosted Backend (Recommended)
-The backend is publicly available and ready to use. No setup required!
+No backend setup required! Just configure the frontend to use the hosted API.
 
-#### Running Local Backend (Optional)
+### Setup Instructions
 
-1. Navigate to the backend directory:
-```bash
-cd backend
-```
+- **Frontend Setup**: See [Frontend README](frontend_prompt_ar/README.md) for detailed Flutter setup instructions
+- **Backend Setup**: See [Backend README](backend/README.md) if you want to run your own backend instance
 
-2. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On macOS/Linux
-# or
-venv\Scripts\activate  # On Windows
-```
+## 📡 API
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+The backend API is hosted on Hugging Face Spaces:
+- **Live API**: [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)
+- **API Documentation**: [https://xnikkon-prmpt-ar-be.hf.space/docs](https://xnikkon-prmpt-ar-be.hf.space/docs)
 
-4. Configure Hugging Face Token:
-   - Get your token from [Hugging Face Settings](https://huggingface.co/settings/tokens) (free account works)
-   - Create a `.env` file in the `backend` directory:
-   ```bash
-   HF_TOKEN=your_huggingface_token_here
-   ```
-
-5. Run the server:
-```bash
-python main.py
-# or
-uvicorn main:app --reload
-```
-
-The API will be available at `http://localhost:8000`  
-API documentation: `http://localhost:8000/docs`
-
-### Frontend Setup
-
-1. Navigate to the frontend directory:
-```bash
-cd frontend_prompt_ar
-```
-
-2. Install dependencies:
-```bash
-flutter pub get
-```
-
-3. Configure environment:
-   - Create a `.env` file in the `frontend_prompt_ar` directory:
-   ```bash
-   # Use the hosted backend on Hugging Face Spaces (recommended)
-   BACKEND_BASE_URL=https://xnikkon-prmpt-ar-be.hf.space
-   
-   # Or use local backend for development:
-   # BACKEND_BASE_URL=http://localhost:8000
-   # For Android emulator, use: BACKEND_BASE_URL=http://10.0.2.2:8000
-   # For iOS simulator, use: BACKEND_BASE_URL=http://localhost:8000
-   
-   # Optional: Configure timeouts (in seconds)
-   # GENERATION_TIMEOUT=600
-   # DOWNLOAD_TIMEOUT=300
-   ```
-   
-   **Note**: The backend is hosted on Hugging Face Spaces at [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space). You can use this hosted version or run your own local backend.
-
-4. Run the app:
-```bash
-flutter run
-```
-
-## 📡 API Endpoints
-
-The backend API is hosted on Hugging Face Spaces and available at: **[https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)**
-
-### POST `/api/models/generate`
-Generate a 3D model from a text prompt.
-
-**Request:**
-```json
-{
-  "prompt": "wooden chair",
-  "mode": "basic"  // or "advanced"
-}
-```
-
-**Response:**
-```json
-{
-  "status": "success",
-  "message": "3D model generated successfully using basic mode",
-  "model_id": "abc123-456def-789ghi",
-  "download_url": "/api/models/download/abc123-456def-789ghi"
-}
-```
-
-**Mode Options:**
-- `"basic"`: Uses Shap-E for faster, simpler 3D model generation
-- `"advanced"`: Uses TRELLIS for higher quality 3D models with textures
-
-### GET `/api/models/download/{model_id}`
-Download a generated 3D model file (GLB format).
-
-### GET `/health`
-Health check endpoint to verify backend connectivity.
-
-**Example**: [https://xnikkon-prmpt-ar-be.hf.space/health](https://xnikkon-prmpt-ar-be.hf.space/health)
-
-## 🎨 Model Generation
-
-The backend supports two text-to-3D generation modes:
-
-### Basic Mode (Shap-E)
-- **Model**: [Shap-E](https://github.com/openai/shap-e) by OpenAI
-- **Speed**: Faster generation (5-10 seconds)
-- **Quality**: Simpler geometry, basic models
-- **Use Case**: Quick prototyping, simple objects, rapid iteration
-
-### Advanced Mode (TRELLIS)
-- **Model**: [TRELLIS](https://huggingface.co/spaces/dkatz2391/TRELLIS_TextTo3D_Try2) by Microsoft
-- **Speed**: Slower generation (10-30 seconds)
-- **Quality**: Higher quality with textures and detailed geometry
-- **Use Case**: Production-ready models, detailed objects, final presentations
+For detailed API endpoints and usage, see [Backend README](backend/README.md).
 
 ## 📁 Project Structure
 
 ```
 prompt_ar/
-├── backend/                 # Python FastAPI backend
-│   ├── main.py             # Application entry point
-│   ├── config.py           # Configuration settings
-│   ├── routers/            # API route handlers
-│   │   ├── models.py       # Model generation endpoints
-│   │   └── root.py         # Root/health endpoints
-│   ├── services/           # Business logic
-│   │   ├── huggingface_service.py  # Model generation service
-│   │   ├── storage_service.py      # Model storage management
-│   │   └── ar_material_service.py  # AR material processing
-│   ├── schemas/            # Pydantic models
-│   └── models/             # Generated 3D model storage
-│
-└── frontend_prompt_ar/     # Flutter frontend
-    ├── lib/
-    │   ├── screens/        # UI screens
-    │   │   ├── welcome/    # Welcome/permission screen
-    │   │   └── ar_view/    # AR visualization screen
-    │   ├── bloc/           # State management (BLoC pattern)
-    │   │   └── ar_bloc/    # AR-specific state management
-    │   ├── models/         # Data models
-    │   ├── services/       # API services
-    │   └── repositories/   # Data repositories
-    ├── assets/             # App assets (3D models, etc.)
-    ├── android/            # Android-specific configuration
-    └── ios/                # iOS-specific configuration
+├── backend/              # Python FastAPI backend
+│   └── README.md        # Backend documentation
+└── frontend_prompt_ar/  # Flutter frontend
+    └── README.md        # Frontend documentation
 ```
 
-## 🔧 Requirements
-
-### Backend
-- Python 3.11+
-- FastAPI
-- Hugging Face account (free)
-- Hugging Face token
-
-### Frontend
-- Flutter SDK 3.5.3+
-- iOS 12+ or Android API 21+
-- Device with AR support:
-  - **Android**: ARCore-compatible device
-  - **iOS**: Device with ARKit support (iPhone 6s or newer, iPad Pro, etc.)
-
-## 📱 Platform Support
-
-### Android
-- Requires ARCore support
-- Minimum API level: 21
-- Recommended: API 30+ for best performance
-- Adaptive icons supported
-
-### iOS
-- Requires ARKit support
-- Minimum iOS version: 12.0
-- Recommended: iOS 14+ for best performance
-- Supports iPhone and iPad
+For detailed project structure and requirements, see:
+- [Frontend README](frontend_prompt_ar/README.md) - Flutter app structure and platform support
+- [Backend README](backend/README.md) - Backend architecture and API details
 
 ## 🎯 Use Cases
 
@@ -282,18 +122,6 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 This project is licensed under the CC0-1.0 License - See [LICENSE](LICENSE) file for details.
 
-## 🌐 Backend Hosting
-
-The backend API is hosted on **Hugging Face Spaces** and is publicly available:
-
-- **Live API**: [https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)
-- **API Documentation**: [https://xnikkon-prmpt-ar-be.hf.space/docs](https://xnikkon-prmpt-ar-be.hf.space/docs)
-- **Health Check**: [https://xnikkon-prmpt-ar-be.hf.space/health](https://xnikkon-prmpt-ar-be.hf.space/health)
-
-You can use this hosted backend directly by configuring your `.env` file with:
-```bash
-BACKEND_BASE_URL=https://xnikkon-prmpt-ar-be.hf.space
-```
 
 ## 🙏 Acknowledgments
 

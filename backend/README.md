@@ -27,22 +27,42 @@ FastAPI backend for generating 3D models from text prompts using AI, optimized f
 
 ## API Endpoints
 
+The backend API is hosted on Hugging Face Spaces and available at: **[https://xnikkon-prmpt-ar-be.hf.space](https://xnikkon-prmpt-ar-be.hf.space)**
+
 ### 🏠 Root Endpoints
 
 - **GET `/`** - API information and status
 - **GET `/health`** - Health check endpoint
 
+**Example**: [https://xnikkon-prmpt-ar-be.hf.space/health](https://xnikkon-prmpt-ar-be.hf.space/health)
+
 ### 🎨 Model Generation
 
 - **POST `/api/models/generate`** - Generate a 3D model from text
+  
+  **Request:**
   ```json
   {
     "prompt": "wooden chair",
-    "mode": "advanced"
+    "mode": "basic"  // or "advanced"
   }
   ```
+  
+  **Response:**
+  ```json
+  {
+    "status": "success",
+    "message": "3D model generated successfully using basic mode",
+    "model_id": "abc123-456def-789ghi",
+    "download_url": "/api/models/download/abc123-456def-789ghi"
+  }
+  ```
+  
+  **Mode Options:**
+  - `"basic"`: Uses Shap-E for faster, simpler 3D model generation
+  - `"advanced"`: Uses TRELLIS for higher quality 3D models with textures
 
-- **GET `/api/models/download/{model_id}`** - Download generated model
+- **GET `/api/models/download/{model_id}`** - Download generated model (GLB format)
 
 ## Usage
 
@@ -126,17 +146,20 @@ backend/
 
 ## 3D Model Generation
 
+The backend supports two text-to-3D generation modes:
+
 ### Advanced Mode (TRELLIS)
-- High-quality textured 3D models
-- ~10-30 seconds generation time
-- Uses Microsoft's TRELLIS model
+- **Model**: [TRELLIS](https://huggingface.co/spaces/dkatz2391/TRELLIS_TextTo3D_Try2) by Microsoft
+- **Speed**: Slower generation (10-30 seconds)
+- **Quality**: Higher quality with textures and detailed geometry
+- **Use Case**: Production-ready models, detailed objects, final presentations
 - Optimized for AR applications
 
 ### Basic Mode (Shap-E)
-- Fast generation
-- ~5-10 seconds generation time
-- Uses OpenAI's Shap-E model
-- Basic geometry without textures
+- **Model**: [Shap-E](https://github.com/openai/shap-e) by OpenAI
+- **Speed**: Faster generation (5-10 seconds)
+- **Quality**: Simpler geometry, basic models
+- **Use Case**: Quick prototyping, simple objects, rapid iteration
 
 ## Development
 
@@ -161,7 +184,9 @@ MIT License - See LICENSE file for details
 
 ## Links
 
-- 🏠 [Project Repository](https://github.com/yourusername/prompt_ar)
-- 📱 [Flutter Frontend](https://github.com/yourusername/prompt_ar/tree/main/frontend_prompt_ar)
-- 📖 [Full Documentation](https://github.com/yourusername/prompt_ar/blob/main/README.md)
+- 🏠 [Project Repository](https://github.com/nikkon404/prompt-ar)
+- 📱 [Flutter Frontend](https://github.com/nikkon404/prompt-ar/tree/main/frontend_prompt_ar)
+- 📖 [Full Documentation](https://github.com/nikkon404/prompt-ar/blob/main/README.md)
+- 🌐 [Live API](https://xnikkon-prmpt-ar-be.hf.space)
+- 📚 [API Documentation](https://xnikkon-prmpt-ar-be.hf.space/docs)
 
